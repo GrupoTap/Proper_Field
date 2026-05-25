@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v8.5.2</title>
+<title>ProperCare Field · PGP Preventivas v8.5.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -464,7 +464,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v8.5.3</div>
+      <div class="subtitle">PGP Preventiva · v8.5.4</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -827,7 +827,7 @@ const PHOTOS = [
 
 let machines = [];
 let currentMachine = 0;
-const APP_VERSION = 'v8.4.5';
+const APP_VERSION = 'v8.5.4';
 
 function normSessionKey(v) {
   return String(v || '')
@@ -3367,7 +3367,8 @@ const _AUTH_KEY  = 'proper_auth_ok';
 const _AUTH_HASH = '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92';
 // ──────────────────────────────────────────────────────────────────────────
 
-let _pgpGsUrl = localStorage.getItem('proper_gs_url') || '';
+const _DEFAULT_GAS_URL='https://script.google.com/macros/s/AKfycbxpHeOZLkCzaqe_B4RQx47cZ7WOQzv7pPg0qB3VgtlHTRnQ6RpEwtu7E47pugBetQVSuw/exec';
+let _pgpGsUrl = localStorage.getItem('proper_gs_url') || _DEFAULT_GAS_URL;
 let _pgpGsConnected = false;
 let _pgpLoadedMachine = null;
 let _pgpLoadedMachinesByIndex = {};
