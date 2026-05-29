@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v8.5.3</title>
+<title>ProperCare Field · PGP Preventivas v13</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -451,7 +451,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">⚙ Proper</div>
-    <div class="login-sub">ProperCare Field · v8.4.5</div>
+    <div class="login-sub">ProperCare Field · v13</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -464,7 +464,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v8.5.4</div>
+      <div class="subtitle">PGP Preventiva · v13</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -508,6 +508,7 @@
       <input type="text" id="pgpClientInput" class="pgp-search-input"
              placeholder="Digite o nome do cliente..."
              oninput="pgpClientSearch()" onkeydown="pgpClientKey(event)"
+             onfocus="pgpClientSearch()"
              autocomplete="off">
       <div class="pgp-autocomplete-list" id="pgpClientAcList"></div>
     </div>
@@ -827,7 +828,7 @@ const PHOTOS = [
 
 let machines = [];
 let currentMachine = 0;
-const APP_VERSION = 'v8.5.4';
+const APP_VERSION = 'v13';
 
 function normSessionKey(v) {
   return String(v || '')
@@ -906,6 +907,16 @@ const PART_PHOTO_MAP = {
   p4: 'separador',
   p5: null,            // Óleo lubrificante — sem foto específica na seção 5
   p9: 'correia',
+};
+
+// v13: labels descritivos para fotos de horímetro por peça (usados no PDF)
+const HORI_PHOTO_LABELS = {
+  hori_p1: 'Horímetro – Filtro de Óleo',
+  hori_p2: 'Horímetro – Filtro Ar Primário',
+  hori_p3: 'Horímetro – Filtro Ar Secundário',
+  hori_p4: 'Horímetro – Sep. Ar/Óleo',
+  hori_p5: 'Horímetro – Óleo Lubrificante',
+  hori_p9: 'Horímetro – Correia',
 };
 
 const SCENARIOS = [
@@ -997,36 +1008,6 @@ function buildPartsTable(p, midx, scenario) {
           </div>
           <div class="pt-detail-grid">
             <div class="pt-det-field">
-              <label>Histórico</label>
-              <select id="${pk}_historico" data-key="${pk}_historico">
-                <option value="">Selecionar...</option>
-                <option value="conhecido">Conhecido</option>
-                <option value="parcial">Parcial</option>
-                <option value="desconhecido">Desconhecido</option>
-              </select>
-            </div>
-            <div class="pt-det-field">
-              <label>Confiança</label>
-              <select id="${pk}_confianca" data-key="${pk}_confianca">
-                <option value="">Selecionar...</option>
-                <option value="alta">Alta</option>
-                <option value="media">Média</option>
-                <option value="baixa">Baixa</option>
-              </select>
-            </div>
-            <div class="pt-det-field">
-              <label>Fonte</label>
-              <select id="${pk}_fonte" data-key="${pk}_fonte">
-                <option value="">Selecionar...</option>
-                <option value="etiqueta">Etiqueta</option>
-                <option value="display">Display / Controlador</option>
-                <option value="plano_cliente">Plano do cliente</option>
-                <option value="verbal">Verbal</option>
-                <option value="os_anterior">OS anterior</option>
-                <option value="sem_fonte">Sem fonte</option>
-              </select>
-            </div>
-            <div class="pt-det-field">
               <label>Última troca (h total)</label>
               <input type="number" placeholder="Se conhecido" id="${pk}_ult" data-key="${pk}_ult">
             </div>
@@ -1051,14 +1032,18 @@ function buildPartsTable(p, midx, scenario) {
             <textarea placeholder="Ex: etiqueta ilegível, horímetro zerado pelo cliente..." id="${pk}_obs" data-key="${pk}_obs" rows="2"></textarea>
           </div>
           <div id="${pk}_calc_box"></div>
-          ${PART_PHOTO_MAP[pt.k] !== undefined ? `
-          <div style="margin-top:4px">
-            <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok"
-                    onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'${PART_PHOTO_MAP[pt.k]}')""
-                    ${!PART_PHOTO_MAP[pt.k] ? 'title="Sem item vinculado na seção 5"' : ''}>
-              📷 Foto desta peça
+          <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-foto-peca" id="${pk}_hori_btn" data-done-label="✅ Horímetro ok"
+                    onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'hori_${pt.k}')">
+                📷 Foto horímetro desta peça
             </button>
-          </div>` : ''}
+            ${PART_PHOTO_MAP[pt.k] !== undefined ? `
+            <button class="btn-foto-peca" id="${pk}_foto_btn" data-done-label="✅ Foto ok"
+                    onclick="event.stopPropagation();abrirFotoPicker(this,'linked',${midx},'${PART_PHOTO_MAP[pt.k]}')"
+                    ${!PART_PHOTO_MAP[pt.k] ? 'title="Sem item vinculado na seção 5"' : ''}>
+              📷 Foto da peça
+            </button>` : ''}
+          </div>
         </div>
       </td>
     </tr>`;
@@ -1504,6 +1489,8 @@ function addMachine() {
     copyClientDataSilent();
     showNotification('✅ Dados do cliente copiados!');
   }
+  // v8.5.4: copiar regime de trabalho da máquina 0 se preenchido
+  copyRegimeFromFirst(idx);
 }
 
 function switchMachine(idx) {
@@ -1544,6 +1531,77 @@ function copyClientDataSilent() {
     const dst = document.querySelector('[data-key="m'+currentMachine+'_'+f+'"]');
     if (src && dst) dst.value = src.value;
   });
+}
+
+// v8.5.4: copiar regime de trabalho da máquina 0 para a nova
+function copyRegimeFromFirst(dstIdx) {
+  if(dstIdx === 0) return;
+  const srcContainer = document.getElementById('m0_turnos');
+  if(!srcContainer) return;
+  const srcRows = srcContainer.querySelectorAll('.turno-row');
+  if(!srcRows.length) return;
+
+  // Verificar se ao menos um turno tem dados preenchidos
+  let temDados = false;
+  srcRows.forEach(row => {
+    const diasEl = row.querySelector('.turno-dias-sel');
+    const inicioEl = row.querySelector('input[type="time"][data-key$="_inicio"]');
+    const fimEl = row.querySelector('input[type="time"][data-key$="_fim"]');
+    if(diasEl?.value && inicioEl?.value && fimEl?.value) temDados = true;
+  });
+  if(!temDados) return;
+
+  // Coletar dados do regime da máquina 0
+  const regimeData = [...srcRows].map(row => {
+    const diasEl = row.querySelector('.turno-dias-sel');
+    const inicioEl = row.querySelector('input[type="time"][data-key$="_inicio"]');
+    const fimEl = row.querySelector('input[type="time"][data-key$="_fim"]');
+    const allCbs = [...(row.querySelectorAll('.custom-days-wrap input[type="checkbox"]')||[])];
+    const customChecked = allCbs.map((cb,i)=>cb.checked?i:-1).filter(i=>i>=0);
+    return { dias: diasEl?.value||'', inicio: inicioEl?.value||'', fim: fimEl?.value||'', customDays: customChecked };
+  }).filter(t=>t.dias&&t.inicio&&t.fim);
+
+  if(!regimeData.length) return;
+
+  // Restaurar no destino usando o mesmo mecanismo do pgpLoadMachine
+  const p = 'm'+dstIdx+'_';
+  const dstContainer = document.getElementById(p+'turnos');
+  if(!dstContainer) return;
+
+  // Limpar turnos existentes
+  const existing = dstContainer.querySelectorAll('.turno-row');
+  existing.forEach((r,i)=>{ if(i>0) r.remove(); });
+
+  regimeData.forEach((t, tIdx) => {
+    let row;
+    if(tIdx === 0){
+      row = dstContainer.querySelector('.turno-row');
+    } else {
+      const div = document.createElement('div');
+      div.innerHTML = buildTurnoRow(p, tIdx, dstIdx);
+      dstContainer.appendChild(div.firstElementChild);
+      row = dstContainer.lastElementChild;
+    }
+    if(!row) return;
+    const diasEl   = row.querySelector('.turno-dias-sel');
+    const inicioEl = row.querySelector('input[type="time"][data-key$="_inicio"]');
+    const fimEl    = row.querySelector('input[type="time"][data-key$="_fim"]');
+    if(diasEl)   diasEl.value   = t.dias;
+    if(inicioEl) inicioEl.value = t.inicio;
+    if(fimEl)    fimEl.value    = t.fim;
+    const customWrap = row.querySelector('.custom-days-wrap');
+    if(diasEl?.value==='custom' && customWrap){
+      customWrap.style.display='';
+      if(t.customDays?.length){
+        const cbs = customWrap.querySelectorAll('input[type="checkbox"]');
+        t.customDays.forEach(i=>{ if(cbs[i]) cbs[i].checked=true; });
+      }
+    }
+  });
+
+  const delBtns = dstContainer.querySelectorAll('.turno-del');
+  delBtns.forEach(b=>b.style.display = delBtns.length>1?'':'none');
+  calcRegime(dstIdx);
 }
 
 function showNotification(msg) {
@@ -1636,7 +1694,8 @@ function capturePhotoLinked(input, midx, photoKey, triggerBtn, saveToDevice) {
   // Armazena base64 para uso no PDF (e salva no dispositivo se veio da câmera)
   if (photoKey && photoKey !== 'null') {
     const ph = PHOTOS.find(p => p.photoKey === photoKey);
-    const label = ph ? ph.label : (triggerBtn ? (triggerBtn.textContent||photoKey) : photoKey);
+    const label = ph ? ph.label
+      : (HORI_PHOTO_LABELS[photoKey] || (triggerBtn ? (triggerBtn.textContent.trim() || photoKey) : photoKey));
     storePhotoBase64(midx, photoKey, label, file, saveToDevice);
   }
 
@@ -4229,45 +4288,62 @@ function pgpBackToStep1(){
   document.getElementById('pgpNewMachine').classList.remove('show');
 }
 
-async function pgpClientSearch(){
-  const q=(document.getElementById('pgpClientInput').value||'').trim();
-  const acList=document.getElementById('pgpClientAcList');
-  if(q.length<2){acList.style.display='none';return;}
+// v8.5.4: cache de clientes carregado uma única vez
+let _pgpAllClientsCache = null;
+let _pgpClientsCacheLoading = false;
 
-  const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
-  // 1. Buscar no localStorage (imediato)
+async function pgpEnsureClientsCache(){
+  if(_pgpAllClientsCache !== null) return;
+  if(_pgpClientsCacheLoading) return;
+  _pgpClientsCacheLoading = true;
+  // Locais
   const localClients=[...new Set(
     pgpGetLocalMachines().map(m=>m.client).filter(Boolean)
-  )].filter(c=>norm(c).includes(norm(q))).slice(0,8);
-
-  // 2. Buscar no GAS se conectado
+  )];
+  // Servidor
   let serverClients=[];
   if(_pgpGsConnected&&_pgpGsUrl){
     try{
       const r=await fetch(_pgpGsUrl+'?action=getClientsForField&key='+_AUTH_HASH);
       const d=await r.json();
       if(d.status==='ok'){
-        serverClients=(d.clients||[]).filter(c=>norm(c).includes(norm(q)));
-        // v8.4.4: armazenar clientsFull para uso ao selecionar
+        serverClients=d.clients||[];
         if(d.clientsFull) window._pgpClientsFull=d.clientsFull;
       }
     }catch(e){}
   }
-
-  // v8.5.3: deduplicar por clientKey, filtrar termos suspeitos
+  // Deduplicar
   const seenKeys=new Set();
-  const allClients=[];
+  const all=[];
   [...serverClients,...localClients].forEach(c=>{
     if(isSuspectClientTerm(c)) return;
     const k=clientKey(c);
-    if(k&&!seenKeys.has(k)){seenKeys.add(k);allClients.push(c);}
+    if(k&&!seenKeys.has(k)){seenKeys.add(k);all.push(c);}
   });
-  allClients.splice(10);
-  if(!allClients.length){acList.style.display='none';return;}
+  _pgpAllClientsCache = all.sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  _pgpClientsCacheLoading = false;
+}
+
+async function pgpClientSearch(){
+  const q=(document.getElementById('pgpClientInput').value||'').trim();
+  const acList=document.getElementById('pgpClientAcList');
+
+  // v8.5.4: garantir cache carregado
+  await pgpEnsureClientsCache();
+
+  const norm=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const nq=norm(q);
+
+  // Sem filtro quando campo vazio → mostrar todos; mínimo 1 char para busca
+  let filtered = _pgpAllClientsCache || [];
+  if(nq.length>=1){
+    filtered = filtered.filter(c=>norm(c).includes(nq));
+  }
+
+  if(!filtered.length){acList.style.display='none';return;}
 
   acList.style.display='block';
-  acList.innerHTML=allClients.map(c=>
+  acList.innerHTML=filtered.map(c=>
     `<div class="pgp-ac-item" onclick="pgpSelectClient('${c.replace(/'/g,"\\'")}')">
        <span class="pgp-ac-main">${c}</span>
      </div>`
