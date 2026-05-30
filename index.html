@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v13</title>
+<title>ProperCare Field · PGP Preventivas v14</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -3576,6 +3576,10 @@ function pgpBuildVisitRequest(payload){
     contact:   payload.contact   || '',
     nextVisit: payload.nextVisit || '',
     lastVisit: payload.lastVisit || '',
+    // v8.7:
+    obsOp:     payload.obsOp     || '',
+    potencia:  payload.potencia  || '',
+    tipoEquip: payload.tipo      || '',  // tipo de equipamento (não confundir com tipo de visita)
   };
 }
 
@@ -4568,12 +4572,33 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     // Usar _ult se preenchido, senão usar o lastChange calculado por pgpBuildPayload (via valor_mostrado)
     const lastChange=parseInt(ultEl?.value)||base.parts[aid]?.lastChange||0;
 
+    // v8.6: resolver contador mesmo quando hidden não está no DOM (cenário D/E)
+    let contVal = cntEl?.value || '';
+    if (!contVal) {
+      const scenarioEl = document.getElementById(`${p}scenario`);
+      const sc = scenarioEl?.value || '';
+      if (sc === 'D') contVal = 'progressivo';
+      else if (sc === 'E') contVal = 'regressivo';
+      else contVal = base.parts[aid]?.contador || '';
+    }
+
+    // v8.6: calcular horasRodadas/horasRestantes para o payload da preventiva
+    const interval = parseInt(intEl?.value) || pt.intDefault;
+    const vmN = parseFloat(vmEl?.value || '');
+    let horasRodadas = '', horasRestantes = '', partStatus = '';
+    if (!isNaN(vmN) && interval && (contVal === 'progressivo' || contVal === 'regressivo')) {
+      horasRodadas   = contVal === 'progressivo' ? Math.max(0, vmN).toFixed(0)          : Math.max(0, interval - vmN).toFixed(0);
+      horasRestantes = contVal === 'progressivo' ? Math.max(0, interval - vmN).toFixed(0) : Math.max(0, vmN).toFixed(0);
+      const pct = parseFloat(horasRodadas) / interval * 100;
+      partStatus = parseFloat(horasRestantes) <= 0 ? 'VENCIDO' : pct >= 80 ? 'ATENÇÃO' : 'OK';
+    }
+
     parts[aid]={
       name:(base.parts[aid]?.name)||pt.k,
       acao:acaoFinal,
       ref:refEl?.value.trim()||'',
       refAnterior,
-      interval:parseInt(intEl?.value)||pt.intDefault,
+      interval,
       tipoReferencia:(()=>{
         if(acaoFinal!=='trocada') return '';
         const refNova=refEl?.value.trim()||'';
@@ -4583,7 +4608,10 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       lastChange,
       obs:(base.parts[aid]?.obs)||'',
       valorMostrado: vmEl?.value.trim()||'',
-      contador:      cntEl?.value||''
+      contador:      contVal,
+      horasRodadas,
+      horasRestantes,
+      status: partStatus
     };
   });
 
@@ -4785,20 +4813,27 @@ function pgpBuildPayload(midx=currentMachine){
     const obsEl  =document.getElementById(`${pk}_obs`);
     const contEl =document.getElementById(`${pk}_contador`);
     const vmEl   =document.getElementById(`${pk}_valor_mostrado`);
+    // v8.6: fallback do contador pelo cenário quando o hidden não está no DOM ainda
+    let contVal = contEl?.value || '';
+    if (!contVal) {
+      const scenarioEl = document.getElementById(`${p}scenario`);
+      const sc = scenarioEl?.value || '';
+      if (sc === 'D') contVal = 'progressivo';
+      else if (sc === 'E') contVal = 'regressivo';
+    }
     let lastChange=0;
     if(ultEl?.value) lastChange=parseInt(ultEl.value)||0;
-    else if(valorEl?.value&&contEl?.value==='progressivo'){
+    else if(valorEl?.value&&contVal==='progressivo'){
       // Progressivo: valorMostrado = horas rodadas desde última troca → lastChange = hourTotal - horasRodadas
       lastChange=hourTotal-(parseFloat(valorEl.value)||0);
-    } else if(valorEl?.value&&contEl?.value==='regressivo'){
+    } else if(valorEl?.value&&contVal==='regressivo'){
       // Regressivo: valorMostrado = horas RESTANTES → horasRodadas = interval - valorMostrado → lastChange = hourTotal - horasRodadas
       const horasRodadas=(parseInt(intEl?.value)||pt.intDefault)-(parseFloat(valorEl.value)||0);
       lastChange=hourTotal-horasRodadas;
     }
     const interval=parseInt(intEl?.value)||pt.intDefault;
-    // v8.4.4: calcular horasRodadas/horasRestantes/status para o payload
+    // v8.6: calcular horasRodadas/horasRestantes/status para o payload (contVal já resolvido acima)
     const vmN = parseFloat(vmEl?.value||'');
-    const contVal = contEl?.value||'';
     let horasRodadas='', horasRestantes='', partStatus='';
     if(!isNaN(vmN) && interval && (contVal==='progressivo'||contVal==='regressivo')){
       horasRodadas   = contVal==='progressivo' ? Math.max(0,vmN).toFixed(0) : Math.max(0,interval-vmN).toFixed(0);
@@ -4866,11 +4901,13 @@ function pgpBuildPayload(midx=currentMachine){
     cnpj:    gv('cnpj')      || '',
     phone:   gv('telefone')  || '',
     email:   gv('email')     || '',
-    city:    gv('cidade')    || '',
+    city:    [gv('cidade'), gv('estado')].filter(Boolean).join(' / ') || '',
     // v8.4.4: campos novos
     contact: gv('contato')   || '',
     nextVisit: gv('prox_visita') || '',
     lastVisit: gv('ult_visita')  || '',
+    // v8.7: campos operacionais que faltavam no payload
+    obsOp:   gv('obs_op')    || '',
   };
 }
 
