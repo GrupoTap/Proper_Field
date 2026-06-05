@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v14</title>
+<title>ProperCare Field · PGP Preventivas v9</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -451,7 +451,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">⚙ Proper</div>
-    <div class="login-sub">ProperCare Field · v13</div>
+    <div class="login-sub">ProperCare Field · v9</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -464,7 +464,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v13</div>
+      <div class="subtitle">PGP Preventiva · v9</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -475,6 +475,7 @@
           <span id="gsTextPgp">Sheets</span>
         </div>
         <span id="pgpPendingBadge" style="display:none;background:#f97316;color:white;font-size:10px;font-weight:700;padding:3px 8px;border-radius:12px;cursor:pointer;white-space:nowrap;font-family:'Barlow Condensed',sans-serif" onclick="pgpFlushPending()" title="Toque para reenviar">⏳</span>
+        <button class="btn-sessions-header" id="btnCatalogLookup" onclick="pgpToggleCatalogPanel()" title="Consulta de peças">🔍</button>
         <button class="btn-sessions-header" onclick="salvarColeta()" title="Salvar coleta">💾</button>
         <button class="btn-sessions-header" onclick="novaColeta()" title="Iniciar nova coleta">➕</button>
         <button class="btn-sessions-header" onclick="abrirSessoes()" title="Coletas salvas">📂</button>
@@ -485,6 +486,18 @@
     <div class="progress-bar-fill" id="progressBar"></div>
   </div>
 </header>
+
+<!-- PCF-5: Painel de consulta de peças -->
+<div id="catalogLookupPanel" style="display:none;background:white;border-bottom:2px solid var(--blue-mid);padding:10px 12px">
+  <div style="font-weight:700;font-size:12px;color:var(--blue);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">
+    🔍 Consulta de Peças — Catálogo Local
+  </div>
+  <input type="text" id="catalogLookupInput"
+    placeholder="Referência, nome da peça ou modelo..."
+    style="width:100%;border:1.5px solid var(--gray-mid);border-radius:7px;padding:8px 10px;font-size:14px;background:var(--gray);margin-bottom:8px;box-sizing:border-box"
+    oninput="pgpRenderCatalogLookup()" />
+  <div id="catalogLookupResults" style="max-height:260px;overflow-y:auto"></div>
+</div>
 
 <div class="machine-tabs-wrap" id="machineTabs"></div>
 
@@ -828,7 +841,7 @@ const PHOTOS = [
 
 let machines = [];
 let currentMachine = 0;
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v9';
 
 function normSessionKey(v) {
   return String(v || '')
@@ -3461,7 +3474,8 @@ const QUEUE_WARN_AT  = 30;   // avisa o usuário a partir deste valor
 function savePendingQueue(list) {
   const count = list.length;
 
-  if (count >= QUEUE_LIMIT) {
+  // PCF-3: > (não >=) para aceitar exatamente o item QUEUE_LIMIT; 41º é bloqueado
+  if (count > QUEUE_LIMIT) {
     showNotification(
       '🚫 Fila offline cheia (' + count + '/' + QUEUE_LIMIT + ' itens). ' +
       'Conecte-se para enviar antes de registrar novas visitas.'
@@ -3597,6 +3611,135 @@ function pgpBuildPartsUpdateRequest(payload, machineIdOverride){
   };
 }
 
+// ── PCF-5: PAINEL DE CONSULTA DE PEÇAS ──────────────────────────────────────
+const CATALOG_CACHE_KEY = 'proper_catalog_cache_v1';
+
+function pgpToggleCatalogPanel() {
+  const p = document.getElementById('catalogLookupPanel');
+  if (!p) return;
+  const visible = p.style.display !== 'none';
+  p.style.display = visible ? 'none' : 'block';
+  if (!visible) document.getElementById('catalogLookupInput')?.focus();
+}
+
+function pgpNormalizeRef(ref) {
+  return (ref || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+}
+
+function pgpEscHtml(v) {
+  return String(v ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function pgpLoadCatalogCache() {
+  try { return JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || 'null'); }
+  catch (e) { return null; }
+}
+
+function pgpSaveCatalogCache(data) {
+  try { localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ ts: new Date().toISOString(), ...data })); }
+  catch (e) { console.warn('Erro ao salvar cache de catálogo:', e); }
+}
+
+async function pgpEnsureCatalogCache() {
+  const cache = pgpLoadCatalogCache();
+  if (cache?.models?.length) return cache;
+  if (!_pgpGsConnected || !_pgpGsUrl) return null;
+  try {
+    const d = await pgpPostJson('getCatalogFull', {});
+    if (d?.status === 'ok') {
+      pgpSaveCatalogCache(d);
+      return d;
+    }
+  } catch (e) { console.warn('Erro ao carregar catálogo do GAS:', e); }
+  return null;
+}
+
+async function pgpRenderCatalogLookup() {
+  const q = (document.getElementById('catalogLookupInput')?.value || '').trim();
+  const el = document.getElementById('catalogLookupResults');
+  if (!el) return;
+
+  if (!q || q.length < 2) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-light)">Digite pelo menos 2 caracteres...</div>';
+    return;
+  }
+
+  let cat = pgpLoadCatalogCache();
+  if (!cat?.models?.length) {
+    cat = await pgpEnsureCatalogCache();
+  }
+
+  if (!cat?.models?.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-light)">Catálogo local vazio. Conecte ao Sheets pelo menos uma vez.</div>';
+    return;
+  }
+
+  const nq = pgpNormalizeRef(q);
+  const normName = q.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const results = [];
+
+  const allModels  = cat.models  || [];
+  const allParts   = cat.parts   || [];
+  const allSims    = cat.similarities || [];
+
+  // Índice de similares por Part_ID+Model_ID
+  const simByPart = {};
+  allSims.forEach(s => {
+    const key = (s.Model_ID || s.modelId || '') + '::' + (s.Part_ID || s.partId || '');
+    if (!simByPart[key]) simByPart[key] = [];
+    simByPart[key].push(s.Ref_Similar || s.refSimilar || '');
+  });
+
+  const modelById = {};
+  allModels.forEach(m => { modelById[m.ID || m.id || ''] = m; });
+
+  allParts.forEach(p => {
+    const mId = p.Model_ID || p.modelId || '';
+    const m = modelById[mId] || {};
+    const oemNorm  = pgpNormalizeRef(p.OEM_Ref || p.oemRef || p.ref || '');
+    const pName    = (p.Name || p.name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const modelStr = ((m.Marca || m.brand || '') + ' ' + (m.Modelo || m.model || '')).toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const sims     = simByPart[mId + '::' + (p.Part_ID || p.partId || '')] || [];
+    const simNorms = sims.map(s => pgpNormalizeRef(s));
+
+    const hit = oemNorm === nq
+      || simNorms.includes(nq)
+      || pName.includes(normName)
+      || modelStr.includes(normName);
+
+    if (hit) results.push({ m, p, sims });
+  });
+
+  if (!results.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-light)">Nenhum resultado encontrado.</div>';
+    return;
+  }
+
+  el.innerHTML = results.slice(0, 20).map(({ m, p, sims }) => {
+    const brand    = m.Marca    || m.brand    || '';
+    const model    = m.Modelo   || m.model    || '';
+    const name     = p.Name     || p.name     || '';
+    const ref      = p.OEM_Ref  || p.oemRef   || p.ref || '';
+    const interval = p.Interval_H || p.interval || '';
+    return `
+    <div style="border:1px solid var(--gray-mid);border-radius:8px;padding:9px 10px;margin-bottom:7px;background:var(--gray)">
+      <div style="font-size:12px;font-weight:700;color:var(--blue)">${pgpEscHtml(name)}</div>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:4px">${pgpEscHtml(brand)} ${pgpEscHtml(model)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${ref ? `<span style="background:#e8f0fb;border-radius:5px;padding:2px 7px;font-size:11px;color:var(--blue-mid)">Ref: ${pgpEscHtml(ref)}</span>` : ''}
+        ${interval ? `<span style="background:#d1fae5;border-radius:5px;padding:2px 7px;font-size:11px;color:#065f46">A cada ${pgpEscHtml(String(interval))}h</span>` : ''}
+        ${sims.map(s => `<span style="background:#f0f0f0;border-radius:5px;padding:2px 7px;font-size:11px">Sim: ${pgpEscHtml(s)}</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('') +
+  (results.length > 20 ? `<div style="font-size:11px;color:var(--text-light);text-align:center">+${results.length - 20} resultados — refine a busca.</div>` : '');
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function pgpQueueRequest(action, body){
   const list = pgpGetPending();
   const signatureBase = [
@@ -3609,8 +3752,11 @@ function pgpQueueRequest(action, body){
   ].join('|');
   const next = list.filter(item => item.signature !== signatureBase);
   next.push({ action, body, signature: signatureBase, ts: Date.now() });
-  savePendingQueue(next);
-  pgpUpdatePendingBadge();
+  // PCF-3: verificar retorno de savePendingQueue()
+  const qResult = savePendingQueue(next);
+  if (qResult.saved) pgpUpdatePendingBadge();
+  else if (qResult.blocked) showNotification('🚫 Fila cheia (limite: ' + QUEUE_LIMIT + '). Sincronize antes de continuar.');
+  return qResult;
 }
 
 function pgpAddPending(type, payload){
@@ -3693,6 +3839,8 @@ function pgpSetGsStatus(state){
     dot.className='gs-dot-pgp';
     txt.textContent='Sheets ✓';
     _pgpGsConnected=true;
+    // SYNC-1: atualizar cache do catálogo ao conectar para que o painel funcione offline
+    pgpEnsureCatalogCache().catch(e => console.warn('Cache catálogo:', e));
     // Ao conectar, reenviar pendências automaticamente
     pgpFlushPending();
   } else if(state==='sync'){
@@ -4775,21 +4923,35 @@ function pgpRegisterNew(){
   // Salvar no localStorage do admin
   pgpUpdateAdminLocal({machine_id:eq.id,serial:eq.serial,tag:eq.tag,client:eq.client,branch:eq.branch,brand:eq.brand,model:eq.model,location:eq.location,hourTotal:eq.hourTotal,hpw:eq.hpw});
 
-  // Enviar ao GAS ou enfileirar para reenvio
-  if(_pgpGsConnected&&_pgpGsUrl){
-    fetch(_pgpGsUrl,{method:'POST',body:JSON.stringify({action:'saveMachine',key:_AUTH_HASH,machine:eq})})
-      .catch(()=>{ pgpAddPending('machine', eq); });
-  } else {
-    pgpAddPending('machine', eq);
-    showNotification('📋 Máquina salva localmente — será enviada ao Sheets quando conectar');
-  }
-
+  // PCF-4: enviar ao GAS usando pgpPostJson com tratamento de erros
   document.getElementById('pgpNewMachine').classList.remove('show');
   document.getElementById('pgpNotFound').classList.remove('show');
   pgpSaveLastClient(client);pgpRenderLastClients();
   const idx=currentMachine;
   pgpLoadMachine(eq,null,idx);
-  if(_pgpGsConnected) showNotification('✅ Máquina cadastrada e carregada!');
+
+  if(_pgpGsConnected&&_pgpGsUrl){
+    pgpPostJson('saveMachine', { machine: eq })
+      .then(resp => {
+        if (!resp || resp.status !== 'ok') throw new Error(resp?.error || 'Falha ao salvar máquina');
+        showNotification('✅ Máquina cadastrada no Sheets');
+      })
+      .catch(() => {
+        const qResult = pgpAddPending('machine', eq);
+        if (qResult?.blocked) {
+          showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
+        } else {
+          showNotification('⏳ Máquina salva localmente. Será enviada ao sincronizar.');
+        }
+      });
+  } else {
+    const qResult = pgpAddPending('machine', eq);
+    if (qResult?.blocked) {
+      showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
+    } else {
+      showNotification('📋 Máquina salva localmente — será enviada ao Sheets quando conectar');
+    }
+  }
 }
 
 function pgpBuildPayload(midx=currentMachine){
@@ -4922,7 +5084,7 @@ function pgpHasMachineData(midx) {
 async function pgpEnviarGS(){
   const indices = machines.map((_, i) => i).filter(pgpHasMachineData);
   if(!indices.length){ showNotification('⚠ Preencha ao menos uma máquina antes de enviar'); return; }
-  let sent=0, queued=0;
+  let sent=0, queued=0, failed=0;
 
   for (const i of indices) {
     const payload=pgpBuildPayload(i);
@@ -4960,9 +5122,9 @@ async function pgpEnviarGS(){
     if(payload.machine_id && Object.keys(payload.parts||{}).length>0){
       pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
     }
-    statusEl.innerHTML='<span style="color:var(--orange)">⏳ Pendente — visita salva na fila. Será reenviada ao conectar.</span>';
-    pgpUpdateGsStatusDisplay();
-    return;
+    // PCF-2: não encerra o loop; permite processar as demais máquinas
+    queued++;
+    continue;
   }
 
   btn.disabled=true;
@@ -5009,13 +5171,14 @@ async function pgpEnviarGS(){
       }
     }
 
+    sent++;
     statusEl.innerHTML='<span style="color:var(--green)">✅ Enviado — visita: '+(d1.visitId||'OK')+partsWarn+'</span>';
     btn.textContent='✅ Enviado!';
     btn.style.background='var(--green)';
-    showNotification(partsWarn ? '✅ Visita enviada; peças na fila.' : '✅ Dados enviados ao Sheets!');
     pgpUpdateGsStatusDisplay();
 
   }catch(e){
+    failed++;
     pgpAddPending('visit', payload);
     if(payload.machine_id && Object.keys(payload.parts||{}).length>0){
       pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
@@ -5026,6 +5189,16 @@ async function pgpEnviarGS(){
     pgpUpdateGsStatusDisplay();
   }
 }
+
+// PCF-2: resumo consolidado após processar todas as máquinas
+if (queued > 0 || sent > 0 || failed > 0) {
+  const msg = [];
+  if (sent   > 0) msg.push(`${sent} enviada${sent > 1 ? 's' : ''}`);
+  if (queued > 0) msg.push(`${queued} enfileirada${queued > 1 ? 's' : ''}`);
+  if (failed > 0) msg.push(`${failed} falha${failed > 1 ? 's' : ''}`);
+  showNotification(msg.join(', '));
+}
+pgpUpdateGsStatusDisplay();
 }
 
 function pgpUpdateAdminLocal(payload){
