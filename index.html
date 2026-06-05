@@ -3742,17 +3742,18 @@ async function pgpRenderCatalogLookup() {
 
 function pgpQueueRequest(action, body){
   const list = pgpGetPending();
+  // PCF-B: tratar payload aninhado para saveMachine
+  const machineBody = body.machine || {};
   const signatureBase = [
     action,
-    body.machine_id || '',
-    body.serial || '',
-    body.tag || '',
-    body.visitDate || '',
-    JSON.stringify(body.parts || {})
+    body.machine_id || machineBody.id     || '',
+    body.serial     || machineBody.serial  || '',
+    body.tag        || machineBody.tag     || '',
+    body.visitDate  || '',
+    JSON.stringify(body.parts || machineBody.parts || {})
   ].join('|');
   const next = list.filter(item => item.signature !== signatureBase);
   next.push({ action, body, signature: signatureBase, ts: Date.now() });
-  // PCF-3: verificar retorno de savePendingQueue()
   const qResult = savePendingQueue(next);
   if (qResult.saved) pgpUpdatePendingBadge();
   else if (qResult.blocked) showNotification('🚫 Fila cheia (limite: ' + QUEUE_LIMIT + '). Sincronize antes de continuar.');
@@ -4894,7 +4895,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function pgpRegisterNew(){
+async function pgpRegisterNew(){
   const client=document.getElementById('nm_client').value.trim();
   const brand =document.getElementById('nm_brand').value.trim();
   const model =document.getElementById('nm_model').value.trim();
@@ -4923,7 +4924,6 @@ function pgpRegisterNew(){
   // Salvar no localStorage do admin
   pgpUpdateAdminLocal({machine_id:eq.id,serial:eq.serial,tag:eq.tag,client:eq.client,branch:eq.branch,brand:eq.brand,model:eq.model,location:eq.location,hourTotal:eq.hourTotal,hpw:eq.hpw});
 
-  // PCF-4: enviar ao GAS usando pgpPostJson com tratamento de erros
   document.getElementById('pgpNewMachine').classList.remove('show');
   document.getElementById('pgpNotFound').classList.remove('show');
   pgpSaveLastClient(client);pgpRenderLastClients();
@@ -4931,26 +4931,19 @@ function pgpRegisterNew(){
   pgpLoadMachine(eq,null,idx);
 
   if(_pgpGsConnected&&_pgpGsUrl){
-    pgpPostJson('saveMachine', { machine: eq })
-      .then(resp => {
-        if (!resp || resp.status !== 'ok') throw new Error(resp?.error || 'Falha ao salvar máquina');
-        showNotification('✅ Máquina cadastrada no Sheets');
-      })
-      .catch(() => {
-        const qResult = pgpAddPending('machine', eq);
-        if (qResult?.blocked) {
-          showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
-        } else {
-          showNotification('⏳ Máquina salva localmente. Será enviada ao sincronizar.');
-        }
-      });
+    try {
+      const resp = await pgpPostJson('saveMachine', { machine: eq });
+      if(!resp || resp.status !== 'ok') throw new Error(resp?.error || 'Falha ao salvar máquina');
+      showNotification('✅ Máquina cadastrada no Sheets');
+    } catch(e) {
+      const qResult = pgpAddPending('machine', eq);
+      if(qResult?.blocked) showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
+      else showNotification('⏳ Máquina salva localmente. Será enviada ao sincronizar.');
+    }
   } else {
     const qResult = pgpAddPending('machine', eq);
-    if (qResult?.blocked) {
-      showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
-    } else {
-      showNotification('📋 Máquina salva localmente — será enviada ao Sheets quando conectar');
-    }
+    if(qResult?.blocked) showNotification('🚫 Fila cheia. Máquina não foi enfileirada.');
+    else showNotification('📋 Máquina salva localmente — será enviada ao Sheets quando conectar');
   }
 }
 
@@ -5118,12 +5111,17 @@ async function pgpEnviarGS(){
   const visitBody = pgpBuildVisitRequest(payload);
 
   if(!_pgpGsConnected){
-    pgpAddPending('visit', payload);
-    if(payload.machine_id && Object.keys(payload.parts||{}).length>0){
-      pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
+    const qVisit = pgpAddPending('visit', payload);
+    let qParts = { saved: true, blocked: false };
+    if(payload.machine_id && Object.keys(payload.parts||{}).length > 0){
+      qParts = pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
     }
-    // PCF-2: não encerra o loop; permite processar as demais máquinas
-    queued++;
+    if(qVisit?.blocked || qParts?.blocked){
+      failed++;
+      showNotification('🚫 Fila cheia. Nem todos os dados foram enfileirados. Sincronize antes de continuar.');
+    } else {
+      queued++;
+    }
     continue;
   }
 
@@ -5179,11 +5177,16 @@ async function pgpEnviarGS(){
 
   }catch(e){
     failed++;
-    pgpAddPending('visit', payload);
-    if(payload.machine_id && Object.keys(payload.parts||{}).length>0){
-      pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
+    const qVisit = pgpAddPending('visit', payload);
+    let qParts = { saved: true, blocked: false };
+    if(payload.machine_id && Object.keys(payload.parts||{}).length > 0){
+      qParts = pgpAddPending('parts', pgpBuildPartsUpdateRequest(payload));
     }
-    statusEl.innerHTML='<span style="color:var(--red)">❌ Erro — visita salva na fila para reenvio.<br><small>'+(e.message||'')+'</small></span>';
+    if(qVisit?.blocked || qParts?.blocked){
+      statusEl.innerHTML='<span style="color:var(--red)">🚫 Fila cheia — dados NÃO enfileirados. Sincronize antes de continuar.</span>';
+    } else {
+      statusEl.innerHTML='<span style="color:var(--red)">❌ Erro — visita salva na fila para reenvio.<br><small>'+(e.message||'')+'</small></span>';
+    }
     btn.disabled=false;
     btn.textContent='📤 Tentar novamente';
     pgpUpdateGsStatusDisplay();
