@@ -241,6 +241,7 @@
   .pt-name small{display:block;font-size:9px;font-weight:400;color:var(--text-light);margin-top:1px}
   .pt-inp{padding:4px 3px;vertical-align:middle}
   .pt-inp input[type=number],.pt-inp input[type=text]{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:5px 5px;font-size:13px;font-family:'Barlow',sans-serif;background:var(--gray);color:var(--text);outline:none;min-width:60px}
+  .pt-inp input[type=number]::placeholder,.pt-inp input[type=text]::placeholder{color:#bfc5d0;font-style:italic;font-weight:400;opacity:1}
   .pt-inp input:focus{border-color:var(--blue-mid);background:white}
   .pt-inp select{width:100%;border:1.5px solid var(--gray-mid);border-radius:6px;padding:5px 3px;font-size:12px;font-family:'Barlow',sans-serif;background:var(--gray);color:var(--text);outline:none}
   .pt-inp select:focus{border-color:var(--blue-mid);background:white}
@@ -1129,7 +1130,7 @@ function pgpRestoreLoadedParts(p, midx) {
     const refEl = document.getElementById(`${pk}_ref`);
     if (refEl && sp.ref) refEl.value = sp.ref;
     // Valor mostrado (visível em cenários B/C/D/E)
-    if (sp.valorMostrado !== undefined && sp.valorMostrado !== null && sp.valorMostrado !== '') {
+    if (sp.valorMostrado !== undefined && sp.valorMostrado !== null && (sp.valorMostrado !== '' || sp.valorMostrado === 0)) {
       const vmEl = document.getElementById(`${pk}_valor_mostrado`);
       if (vmEl) vmEl.value = sp.valorMostrado;
     }
@@ -4163,7 +4164,12 @@ function pgpMarkDynamicFieldsForUpdate(midx){
   const mark = (key) => {
     const el = document.querySelector(`[data-key="${p}${key}"]`) || document.getElementById(`${p}${key}`);
     if(!el) return;
-    el.classList.add('pgp-field-needs-update');
+    const alreadyFilled = el.value !== '' && el.value !== null && el.value !== undefined;
+    if(alreadyFilled){
+      el.classList.add('pgp-field-confirmed-current');
+    } else {
+      el.classList.add('pgp-field-needs-update');
+    }
     el.addEventListener('input', function handler(){
       el.classList.remove('pgp-field-needs-update');
       el.classList.add('pgp-field-confirmed-current');
@@ -4190,7 +4196,12 @@ function pgpMarkDynamicFieldsForUpdate(midx){
     if(isNA) return; // peças N/A não destacar
     const vmEl = document.getElementById(`${pk}_valor_mostrado`);
     if(vmEl){
-      vmEl.classList.add('pgp-field-needs-update');
+      const vmAlreadyFilled = vmEl.value !== '' && vmEl.value !== null;
+      if(!vmAlreadyFilled){
+        vmEl.classList.add('pgp-field-needs-update');
+      } else {
+        vmEl.classList.add('pgp-field-confirmed-current');
+      }
       vmEl.addEventListener('input', ()=>{
         vmEl.classList.remove('pgp-field-needs-update');
         vmEl.classList.add('pgp-field-confirmed-current');
@@ -4310,7 +4321,7 @@ function pgpLoadMachine(eq,localDb,midx=currentMachine,clientData=null){
       const refEl=document.getElementById(`${pk}_ref`);  if(refEl&&sp.ref)        refEl.value=sp.ref;
       const intEl=document.getElementById(`${pk}_int`);  if(intEl&&sp.interval)   intEl.value=sp.interval;
       // Restaurar valorMostrado e contador da visita anterior como referência visual
-      if(sp.valorMostrado !== undefined && sp.valorMostrado !== null && sp.valorMostrado !== ''){
+      if(sp.valorMostrado !== undefined && sp.valorMostrado !== null && (sp.valorMostrado !== '' || sp.valorMostrado === 0)){
         const vmEl=document.getElementById(`${pk}_valor_mostrado`);
         if(vmEl) vmEl.value=sp.valorMostrado;
       }
