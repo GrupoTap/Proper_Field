@@ -1105,6 +1105,10 @@ function buildHiddenPartIds(p) {
   }).join('');
 }
 
+function pgpHasValue(v) {
+  return v !== undefined && v !== null && v !== '';
+}
+
 // v8.5.2 — Restaura valores das peças (valor_mostrado, ult, int, ref, contador, na)
 // a partir da máquina carregada do banco/local. Chamado após buildPartsTable porque
 // os IDs da tabela só existem depois que o cenário é selecionado. Idempotente:
@@ -1190,6 +1194,10 @@ function selectScenario(p, scId, midx, e) {
   // Necessário porque pgpLoadMachine roda antes do cenário ser escolhido, e nesse
   // momento os IDs da tabela ainda não existem. Aqui a tabela já foi construída.
   pgpRestoreLoadedParts(p, midx);
+  // A tabela acabou de ser recriada. Aplicar os destaques depois que os inputs existem no DOM.
+  requestAnimationFrame(() => {
+    pgpMarkDynamicFieldsForUpdate(midx);
+  });
 
   // Marca o field-item como "expanded+checked" para contar no progresso
   const section = wrap.closest('[data-section]');
@@ -4164,7 +4172,8 @@ function pgpMarkDynamicFieldsForUpdate(midx){
   const mark = (key) => {
     const el = document.querySelector(`[data-key="${p}${key}"]`) || document.getElementById(`${p}${key}`);
     if(!el) return;
-    const alreadyFilled = el.value !== '' && el.value !== null && el.value !== undefined;
+    el.classList.remove('pgp-field-needs-update', 'pgp-field-confirmed-current');
+    const alreadyFilled = pgpHasValue(el.value);
     if(alreadyFilled){
       el.classList.add('pgp-field-confirmed-current');
     } else {
@@ -4196,7 +4205,8 @@ function pgpMarkDynamicFieldsForUpdate(midx){
     if(isNA) return; // peças N/A não destacar
     const vmEl = document.getElementById(`${pk}_valor_mostrado`);
     if(vmEl){
-      const vmAlreadyFilled = vmEl.value !== '' && vmEl.value !== null;
+      vmEl.classList.remove('pgp-field-needs-update', 'pgp-field-confirmed-current');
+      const vmAlreadyFilled = pgpHasValue(vmEl.value);
       if(!vmAlreadyFilled){
         vmEl.classList.add('pgp-field-needs-update');
       } else {
@@ -4209,8 +4219,9 @@ function pgpMarkDynamicFieldsForUpdate(midx){
     }
     // destacar última troca apenas se vier do banco (não vazia)
     const ultEl = document.getElementById(`${pk}_ult`);
-    if(ultEl && ultEl.value){
-      ultEl.classList.add('pgp-field-needs-update');
+    if(ultEl && pgpHasValue(ultEl.value)){
+      ultEl.classList.remove('pgp-field-needs-update', 'pgp-field-confirmed-current');
+      ultEl.classList.add('pgp-field-confirmed-current');
       ultEl.addEventListener('input',()=>{
         ultEl.classList.remove('pgp-field-needs-update');
         ultEl.classList.add('pgp-field-confirmed-current');
@@ -5259,9 +5270,11 @@ function pgpUpdateAdminLocal(payload){
         const ex=eq.parts[pid]||{};
         eq.parts[pid]={name:ps.name||ex.name||pid,lastChange:ps.lastChange!==undefined?ps.lastChange:ex.lastChange||0,
           interval:ps.interval||ex.interval||2000,ref:ps.ref||ex.ref||'',na:ps.na!==undefined?ps.na:ex.na||false,
-          contador:ps.contador||ex.contador||'',valorMostrado:ps.valorMostrado||ex.valorMostrado||'',
-          horasRodadas:ps.horasRodadas||ex.horasRodadas||'',horasRestantes:ps.horasRestantes||ex.horasRestantes||'',
-          status:ps.status||ex.status||''};
+          contador:       pgpHasValue(ps.contador)        ? ps.contador        : (pgpHasValue(ex.contador)        ? ex.contador        : ''),
+          valorMostrado:  pgpHasValue(ps.valorMostrado)   ? ps.valorMostrado   : (pgpHasValue(ex.valorMostrado)   ? ex.valorMostrado   : ''),
+          horasRodadas:   pgpHasValue(ps.horasRodadas)    ? ps.horasRodadas    : (pgpHasValue(ex.horasRodadas)    ? ex.horasRodadas    : ''),
+          horasRestantes: pgpHasValue(ps.horasRestantes)  ? ps.horasRestantes  : (pgpHasValue(ex.horasRestantes)  ? ex.horasRestantes  : ''),
+          status:         pgpHasValue(ps.status)          ? ps.status          : (pgpHasValue(ex.status)          ? ex.status          : '')};
       });
     }
     localStorage.setItem('proper_admin_v2',JSON.stringify(db));
