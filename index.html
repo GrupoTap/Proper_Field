@@ -4102,6 +4102,8 @@ function pgpLoadClientDataFromObj(clientObj, midx){
   sv('telefone',  clientObj.telefone  || clientObj.phone      || '');
   sv('email',     clientObj.email     || '');
   sv('cidade',    clientObj.cidade    || clientObj.city       || '');
+  sv('endereco',  clientObj.endereco  || '');
+  sv('uf',        clientObj.uf        || '');
   sv('filial',    clientObj.filial    || clientObj.branch     || '');
   sv('ult_visita',clientObj.lastVisit || clientObj.ultVisita  || '');
   sv('prox_visita',clientObj.nextVisit|| clientObj.proxVisita || '');
@@ -5226,6 +5228,9 @@ async function pgpEnviarGS(){
               filial:    payload.branch   || '',
               nextVisit: payload.nextVisit|| '',
               lastVisit: payload.lastVisit|| '',
+              // v10: endereço e UF
+              endereco:  payload.endereco || '',
+              uf:        payload.uf       || '',
             }
           });
         }
