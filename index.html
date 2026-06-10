@@ -1023,7 +1023,9 @@ function buildPartsTable(p, midx, scenario) {
           <div class="pt-detail-grid">
             <div class="pt-det-field">
               <label>Última troca (h total)</label>
-              <input type="number" placeholder="Se conhecido" id="${pk}_ult" data-key="${pk}_ult">
+              <input type="number" placeholder="Se conhecido" id="${pk}_ult" data-key="${pk}_ult"
+                     data-user-edited="false"
+                     oninput="this.dataset.userEdited='true';event.stopPropagation()">
             </div>
             ${scenario !== 'D' ? `
             <div class="pt-det-field">
@@ -1126,6 +1128,7 @@ function pgpRestoreLoadedParts(p, midx) {
     const ultEl = document.getElementById(`${pk}_ult`);
     if (ultEl && sp.lastChange !== undefined && sp.lastChange !== null && sp.lastChange !== '') {
       ultEl.value = sp.lastChange;
+      ultEl.dataset.userEdited = 'false';
     }
     // Intervalo
     const intEl = document.getElementById(`${pk}_int`);
@@ -4740,8 +4743,6 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
 
     const acaoFinal=isNA?'na':acao;
     const refAnterior=(loadedMachine?.parts?.[aid]?.ref)||'';
-    // Usar _ult se preenchido, senão usar o lastChange calculado por pgpBuildPayload (via valor_mostrado)
-    const lastChange=parseInt(ultEl?.value)||base.parts[aid]?.lastChange||0;
 
     // v8.6: resolver contador mesmo quando hidden não está no DOM (cenário D/E)
     let contVal = cntEl?.value || '';
@@ -4751,6 +4752,34 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
       if (sc === 'D') contVal = 'progressivo';
       else if (sc === 'E') contVal = 'regressivo';
       else contVal = base.parts[aid]?.contador || '';
+    }
+
+    // v9: calcular lastChange com prioridade: valorMostrado+contador > _ult editado > fallback
+    const ultUserEdited = ultEl?.dataset?.userEdited === 'true';
+    const hasValorMostrado = vmEl?.value && vmEl.value.trim() !== '';
+    const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
+    const _hourTotal = parseInt(base.hourTotal) || 0;
+    let lastChange = 0;
+    if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
+      if (contVal === 'progressivo') {
+        lastChange = _hourTotal - (parseFloat(vmEl.value) || 0);
+      } else {
+        const _horasRodadasLc = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(vmEl.value) || 0);
+        lastChange = _hourTotal - _horasRodadasLc;
+      }
+    } else if (ultUserEdited && ultEl?.value) {
+      lastChange = parseInt(ultEl.value) || 0;
+    } else if (hasValorMostrado && contadorConhecido) {
+      if (contVal === 'progressivo') {
+        lastChange = _hourTotal - (parseFloat(vmEl.value) || 0);
+      } else {
+        const _horasRodadasLc = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(vmEl.value) || 0);
+        lastChange = _hourTotal - _horasRodadasLc;
+      }
+    } else if (ultEl?.value) {
+      lastChange = parseInt(ultEl.value) || 0;
+    } else {
+      lastChange = base.parts[aid]?.lastChange || 0;
     }
 
     // v8.6: calcular horasRodadas/horasRestantes para o payload da preventiva
@@ -4998,15 +5027,29 @@ function pgpBuildPayload(midx=currentMachine){
       if (sc === 'D') contVal = 'progressivo';
       else if (sc === 'E') contVal = 'regressivo';
     }
-    let lastChange=0;
-    if(ultEl?.value) lastChange=parseInt(ultEl.value)||0;
-    else if(valorEl?.value&&contVal==='progressivo'){
-      // Progressivo: valorMostrado = horas rodadas desde última troca → lastChange = hourTotal - horasRodadas
-      lastChange=hourTotal-(parseFloat(valorEl.value)||0);
-    } else if(valorEl?.value&&contVal==='regressivo'){
-      // Regressivo: valorMostrado = horas RESTANTES → horasRodadas = interval - valorMostrado → lastChange = hourTotal - horasRodadas
-      const horasRodadas=(parseInt(intEl?.value)||pt.intDefault)-(parseFloat(valorEl.value)||0);
-      lastChange=hourTotal-horasRodadas;
+    // v9: prioridade valorMostrado+contador > _ult editado manualmente > fallback
+    const ultUserEdited = ultEl?.dataset?.userEdited === 'true';
+    const hasValorMostrado = valorEl?.value && valorEl.value.trim() !== '';
+    const contadorConhecido = contVal === 'progressivo' || contVal === 'regressivo';
+    let lastChange = 0;
+    if (hasValorMostrado && contadorConhecido && !ultUserEdited) {
+      if (contVal === 'progressivo') {
+        lastChange = hourTotal - (parseFloat(valorEl.value) || 0);
+      } else {
+        const horasRodadas = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(valorEl.value) || 0);
+        lastChange = hourTotal - horasRodadas;
+      }
+    } else if (ultUserEdited && ultEl?.value) {
+      lastChange = parseInt(ultEl.value) || 0;
+    } else if (hasValorMostrado && contadorConhecido) {
+      if (contVal === 'progressivo') {
+        lastChange = hourTotal - (parseFloat(valorEl.value) || 0);
+      } else {
+        const horasRodadas = (parseInt(intEl?.value) || pt.intDefault) - (parseFloat(valorEl.value) || 0);
+        lastChange = hourTotal - horasRodadas;
+      }
+    } else if (ultEl?.value) {
+      lastChange = parseInt(ultEl.value) || 0;
     }
     const interval=parseInt(intEl?.value)||pt.intDefault;
     // v8.6: calcular horasRodadas/horasRestantes/status para o payload (contVal já resolvido acima)
