@@ -4477,9 +4477,18 @@ async function pgpEnsureClientsCache(){
   if(_pgpClientsCacheLoading) return;
   _pgpClientsCacheLoading = true;
   // Locais
-  const localClients=[...new Set(
-    pgpGetLocalMachines().map(m=>m.client).filter(Boolean)
-  )];
+  // BUG3-FIX: incluir clientes cadastrados diretamente em db.clients, não só via máquinas
+  let localClients = [];
+  try {
+    const localDb = JSON.parse(localStorage.getItem('proper_admin_v2') || 'null');
+    const fromMachines = (localDb?.machines || [])
+      .map(m => m.client || '')
+      .filter(Boolean);
+    const fromClients = (localDb?.clients || [])
+      .map(c => c.nome || '')
+      .filter(Boolean);
+    localClients = [...fromMachines, ...fromClients];
+  } catch(e) {}
   // Servidor
   let serverClients=[];
   if(_pgpGsConnected&&_pgpGsUrl){
