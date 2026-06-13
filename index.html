@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v9</title>
+<title>ProperCare Field · PGP Preventivas v13</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -452,7 +452,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">⚙ Proper</div>
-    <div class="login-sub">ProperCare Field · v9</div>
+    <div class="login-sub">ProperCare Field · v13</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -465,7 +465,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v9</div>
+      <div class="subtitle">PGP Preventiva · v13</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -627,6 +627,7 @@
             onclick="pgpSetTipoVisita('preventiva')">
       🔧 Preventiva
     </button>
+    <button id="btnTipoOS" class="pgp-tipo-btn" onclick="pgpOpenOSLogin()">🧾 Ordens de Serviço</button>
   </div>
   <div id="pgpTipoHint"
        style="font-size:11px;color:var(--text-light);margin-top:5px">
@@ -634,6 +635,7 @@
   </div>
 </div>
 
+<div id="pgpOSPanel" style="display:none;padding:10px 12px"></div>
 <div class="content" id="machineContent"></div>
 
 <div class="actions">
@@ -648,6 +650,9 @@
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
   <button class="btn-preventiva" onclick="pgpEnviarPreventiva()">
     🔧 Registrar Preventiva
+  </button>
+  <button class="btn-preventiva" style="background:var(--blue)" onclick="pgpAbrirFechamentoOS()">
+    🧾 Fechar OS
   </button>
 </div>
 
@@ -2982,8 +2987,9 @@ function addImagemProporcional(doc, imgData, x, y, maxW, maxH, srcW, srcH) {
   doc.addImage(imgData, 'JPEG', x, y, w, h);
 }
 
-async function gerarPDF() {
-  if (machines.length === 0) { alert('Nenhuma máquina para gerar relatório.'); return; }
+async function gerarPDF(maquinaIdx = null) {
+  const pdfMachineIndexes = maquinaIdx === null ? machines.map((_, i) => i) : [maquinaIdx];
+  if (machines.length === 0 || !pdfMachineIndexes.length) { alert('Nenhuma máquina para gerar relatório.'); return; }
 
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.'); return; }
@@ -3130,15 +3136,16 @@ async function gerarPDF() {
   // ══════════════════════════════════════════════════════
   // LOOP POR MÁQUINA
   // ══════════════════════════════════════════════════════
-  for (let midx = 0; midx < machines.length; midx++) {
-    if (midx > 0) { newPage(); }
+  for (let pdfi = 0; pdfi < pdfMachineIndexes.length; pdfi++) {
+    const midx = pdfMachineIndexes[pdfi];
+    if (pdfi > 0) { newPage(); }
 
     // ── PÁGINA 1: HEADER ──────────────────────────────
-    addPageHeader(midx === 0);
-    let y = midx === 0 ? 40 : 24;
+    addPageHeader(pdfi === 0);
+    let y = pdfi === 0 ? 40 : 24;
 
     // Título da máquina (se múltiplas)
-    if (machines.length > 1) {
+    if (pdfMachineIndexes.length > 1) {
       doc.setFillColor(...ORANGE);
       doc.rect(ML, y, CW, 7, 'F');
       doc.setFont('helvetica','bold');
@@ -3428,6 +3435,7 @@ async function gerarPDF() {
   const nomeArq = `Relatorio_PGP_${razao}_${dataStr}.pdf`.replace(/\s+/g,'_');
   doc.save(nomeArq);
   showNotification('✅ PDF gerado: ' + nomeArq);
+  return { doc, nomeArq };
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4847,7 +4855,8 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     cnpj:base.cnpj||'',phone:base.phone||'',email:base.email||'',city:base.city||'',
     // v8.4.4:
     contact:base.contact||'',nextVisit:base.nextVisit||'',lastVisit:base.lastVisit||'',
-    parts
+    parts,
+    os_numero: _pgpOSAtual?.numero_os || ''
   };
 }
 
@@ -4893,6 +4902,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
   }
 
   const payload=pgpBuildPreventivaPayload(idx);
+  if(_pgpOSAtual) _pgpOSUltimaVisita = payload.visit_id || _pgpOSUltimaVisita;
   const nTrocadas=Object.values(payload.parts).filter(p=>p.acao==='trocada').length;
 
   pgpUpdateAdminLocal(payload);
@@ -4932,7 +4942,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
-      pgpSetTipoVisita('inspecao');
+      if(!_pgpOSAtual) pgpSetTipoVisita('inspecao');
     } else {
       throw new Error(d.error||'Erro desconhecido');
     }
@@ -4954,6 +4964,102 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
   }
 }
+
+
+// ══════════════════════════════════════════════════════════
+// ORDENS DE SERVIÇO v13 — porta opcional, não bloqueia inspeção/comercial
+// ══════════════════════════════════════════════════════════
+const PGP_ATT_QUEUE_KEY = 'proper_pending_att';
+let _pgpOSTecnico = null;
+let _pgpOSLista = [];
+let _pgpOSAtual = null;
+let _pgpOSInicio = '';
+let _pgpOSUltimaVisita = '';
+function pgpGetAttQueue(){try{return JSON.parse(localStorage.getItem(PGP_ATT_QUEUE_KEY)||'[]')||[];}catch(e){return[];}}
+function pgpSaveAttQueue(list){localStorage.setItem(PGP_ATT_QUEUE_KEY, JSON.stringify(list||[]));}
+function pgpQueueAnexo(payload){const list=pgpGetAttQueue();list.push({payload,ts:Date.now()});pgpSaveAttQueue(list);pgpFlushAnexos();}
+async function pgpUploadAnexo(payload){return pgpPostJson('salvarFotosDrivePGP', payload);}
+async function pgpFlushAnexos(){
+  if(!_pgpGsConnected||!_pgpGsUrl) return;
+  const list=pgpGetAttQueue(); if(!list.length) return;
+  const failed=[];
+  for(const item of list){
+    try{
+      const resp=await pgpUploadAnexo(item.payload);
+      if(item.payload?.attachmentType==='pdf_os' && _pgpOSAtual?.id_os){
+        await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,pdf_url:resp.url,drive_folder_id:resp.folder_id,drive_folder_url:resp.folder_url});
+      }
+    }catch(e){failed.push(item);}
+  }
+  pgpSaveAttQueue(failed);
+}
+function pgpBase64FromDataUrl(dataUrl){return String(dataUrl||'').split(',')[1]||'';}
+async function pgpHashPin(pin){
+  const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function pgpOpenOSLogin(){
+  const p=document.getElementById('pgpOSPanel'); if(!p) return;
+  p.style.display='block';
+  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue);margin-bottom:8px">🧾 Ordens de Serviço</div><input id="pgpPinOS" type="password" inputmode="numeric" maxlength="4" placeholder="PIN do técnico" style="width:100%;font-size:22px;padding:10px;border:1px solid var(--gray-mid);border-radius:8px;letter-spacing:5px"><button class="btn" style="margin-top:8px;background:var(--blue);color:white" onclick="pgpLoginTecnicoOS()">Entrar</button><div id="pgpOSMsg" style="font-size:12px;margin-top:8px;color:var(--text-light)"></div></div>`;
+}
+async function pgpLoginTecnicoOS(){
+  const pin=document.getElementById('pgpPinOS')?.value||''; if(pin.length<4){showNotification('⚠ Informe o PIN');return;}
+  try{const pin_hash=await pgpHashPin(pin);const d=await pgpPostJson('loginTecnico',{pin_hash});_pgpOSTecnico=d.tecnico;_pgpOSLista=d.os||[];sessionStorage.setItem('proper_os_session',JSON.stringify({tecnico:_pgpOSTecnico,os:_pgpOSLista}));pgpRenderOSLista();}
+  catch(e){document.getElementById('pgpOSMsg').textContent=e.message||'PIN inválido';}
+}
+function pgpRenderOSLista(){
+  const p=document.getElementById('pgpOSPanel'); if(!p) return;
+  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue);margin-bottom:8px">OS de ${(_pgpOSTecnico?.nome)||'técnico'}</div>${_pgpOSLista.map((o,i)=>`<button class="btn" style="display:block;width:100%;margin:6px 0;text-align:left" onclick="pgpAbrirOS(${i})"><b>${o.numero_os}</b> · ${o.cliente||''}<br><small>${o.descricao||''}</small></button>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Nenhuma OS pendente.</div>'}</div>`;
+}
+function pgpOSMachineIds(o){try{const a=JSON.parse(o.maquinas_vinculadas||'[]');return Array.isArray(a)?a.map(String):[];}catch(e){return[];}}
+async function pgpAbrirOS(i){
+  _pgpOSAtual=_pgpOSLista[i]; _pgpOSInicio=new Date().toISOString();
+  await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,status:'em_andamento',inicio_atendimento:_pgpOSInicio});
+  pgpSetTipoVisita('preventiva');
+  const ids=new Set(pgpOSMachineIds(_pgpOSAtual));
+  const all=pgpGetLocalMachines();
+  const normOSClient = v => String(v||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const osClientNorm=normOSClient(_pgpOSAtual.cliente||'');
+  const candidates=all.filter(m=>normOSClient(m.client||'')===osClientNorm || ids.has(String(m.id||'')));
+  const p=document.getElementById('pgpOSPanel');
+  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS ${_pgpOSAtual.numero_os}</div><div style="font-size:12px;color:var(--text-light);margin:6px 0">Selecione/ajuste as máquinas. O PCM sugere; o campo decide.</div>${candidates.map((m,idx)=>`<label style="display:block;font-size:12px;margin:4px 0"><input class="pgpOSMachineChk" type="checkbox" value="${m.id||''}" data-idx="${idx}" ${ids.has(String(m.id||''))?'checked':''}> ${m.tag||m.serial||m.model||m.id} · ${m.client||''}</label>`).join('')}<button class="btn" style="margin-top:8px;background:var(--blue);color:white" onclick="pgpAplicarMaquinasOS()">Usar máquinas selecionadas</button></div>`;
+}
+async function pgpAplicarMaquinasOS(){
+  const ids=[...document.querySelectorAll('.pgpOSMachineChk:checked')].map(x=>x.value).filter(Boolean);
+  await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,maquinas_vinculadas:ids});
+  showNotification('✅ Máquinas da OS atualizadas. Preencha a preventiva e conclua.');
+}
+function pgpCanvasPad(id){
+  return `<canvas id="${id}" width="320" height="120" style="width:100%;height:120px;border:1px solid var(--gray-mid);border-radius:8px;background:white;touch-action:none"></canvas>`;
+}
+function pgpBindCanvas(id){
+  const c=document.getElementById(id); if(!c) return; const ctx=c.getContext('2d'); let down=false;
+  const pos=e=>{const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*c.width/r.width,y:(t.clientY-r.top)*c.height/r.height};};
+  const start=e=>{down=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();};
+  const move=e=>{if(!down)return;const p=pos(e);ctx.lineWidth=2;ctx.lineCap='round';ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault();};
+  ['mousedown','touchstart'].forEach(ev=>c.addEventListener(ev,start));['mousemove','touchmove'].forEach(ev=>c.addEventListener(ev,move));['mouseup','mouseleave','touchend'].forEach(ev=>c.addEventListener(ev,()=>down=false));
+}
+function pgpAbrirFechamentoOS(){
+  if(!_pgpOSAtual){showNotification('⚠ Abra uma OS primeiro');return;}
+  const p=document.getElementById('pgpOSPanel');
+  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">Fechar OS ${_pgpOSAtual.numero_os}</div><input id="pgpRespCliente" placeholder="Responsável do cliente" style="width:100%;padding:8px;margin:8px 0;border:1px solid var(--gray-mid);border-radius:8px"><div style="font-size:12px;font-weight:700">Assinatura do técnico</div>${pgpCanvasPad('pgpAssTec')}<div style="font-size:12px;font-weight:700;margin-top:8px">Assinatura do cliente</div>${pgpCanvasPad('pgpAssCli')}<button class="btn" style="margin-top:8px;background:var(--blue);color:white" onclick="pgpConcluirOS()">Concluir OS e gerar PDF</button></div>`;
+  pgpBindCanvas('pgpAssTec'); pgpBindCanvas('pgpAssCli');
+}
+async function pgpConcluirOS(){
+  const fim=new Date().toISOString();
+  const common={osNumero:_pgpOSAtual.numero_os,clientName:_pgpOSAtual.cliente,entityType:'os',entityId:_pgpOSAtual.id_os,createdBy:_pgpOSTecnico?.id||_pgpOSTecnico?.nome||''};
+  const tec=document.getElementById('pgpAssTec')?.toDataURL('image/png');
+  const cli=document.getElementById('pgpAssCli')?.toDataURL('image/png');
+  if(tec) pgpQueueAnexo({...common,fileName:`${_pgpOSAtual.numero_os}_assinatura_tecnico.png`,mime:'image/png',dataBase64:pgpBase64FromDataUrl(tec),attachmentType:'assinatura_tecnico',caption:'Assinatura do técnico'});
+  if(cli) pgpQueueAnexo({...common,fileName:`${_pgpOSAtual.numero_os}_assinatura_cliente.png`,mime:'image/png',dataBase64:pgpBase64FromDataUrl(cli),attachmentType:'assinatura_cliente',caption:document.getElementById('pgpRespCliente')?.value||'Assinatura do cliente'});
+  const pdf=await gerarPDF(null);
+  if(pdf?.doc){pgpQueueAnexo({...common,fileName:pdf.nomeArq,mime:'application/pdf',dataBase64:pgpBase64FromDataUrl(pdf.doc.output('datauristring')),attachmentType:'pdf_os',caption:'Relatório PDF da OS'});}
+  await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,status:'concluida',fim_atendimento:fim,id_visita_resultado:_pgpOSUltimaVisita||''});
+  showNotification('✅ OS concluída; anexos irão para o Drive/TECH_ATTACHMENTS.');
+}
+try{const s=JSON.parse(sessionStorage.getItem('proper_os_session')||'null');if(s){_pgpOSTecnico=s.tecnico;_pgpOSLista=s.os||[];}}catch(e){}
+window.addEventListener('load',()=>pgpFlushAnexos());
 
 // ─────────────────────────────────────────────────────────────────────────────
 
