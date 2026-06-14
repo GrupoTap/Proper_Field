@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ProperCare Field · PGP Preventivas v13</title>
+<title>ProperCare Field · PGP Preventivas v9</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -452,7 +452,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
     <div class="login-logo">⚙ Proper</div>
-    <div class="login-sub">ProperCare Field · v13</div>
+    <div class="login-sub">ProperCare Field · v9</div>
     <label class="login-label">Senha de acesso</label>
     <input class="login-input" type="password" id="loginInput" placeholder="••••••"
            maxlength="20" onkeydown="if(event.key==='Enter')loginEntrar()">
@@ -465,7 +465,7 @@
   <div class="top-row">
     <div>
       <h1>📋 ProperCare Field</h1>
-      <div class="subtitle">PGP Preventiva · v13</div>
+      <div class="subtitle">PGP Preventiva · v9</div>
     </div>
     <div class="header-right">
       <div class="progress-pill" id="progressPill">0 / 0</div>
@@ -615,31 +615,25 @@
 </div>
 
 <div id="pgpTipoVisitaWrap" style="padding:10px 12px 0">
-  <div class="pgp-tipo-grupo" id="pgpGrupoTipoVisita">
-    <div style="font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px">TIPO DE VISITA</div>
-    <div style="display:flex;gap:8px">
-      <button id="btnTipoInspecao" class="pgp-tipo-btn pgp-tipo-btn-active" onclick="pgpSetTipoVisita('inspecao')">
-        🔍 Inspeção
-      </button>
-      <button id="btnTipoPreventiva" class="pgp-tipo-btn" onclick="pgpSetTipoVisita('preventiva')">
-        🔧 Preventiva
-      </button>
-    </div>
-  </div>
-  <div id="pgpOSBadge" style="display:none;background:var(--blue);color:white;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:700;margin:6px 0">
-    🔧 Modo OS — tipo definido pelo PCM
-  </div>
-  <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gray-mid)">
-    <button id="btnTipoOS" class="btn" style="width:100%;background:var(--blue);color:white;border-radius:8px" onclick="pgpOpenOSLogin()">
-      🧾 Abrir Ordem de Serviço
+  <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Tipo de visita</div>
+  <div style="display:flex;gap:8px">
+    <button id="btnTipoInspecao"
+            class="pgp-tipo-btn pgp-tipo-btn-active"
+            onclick="pgpSetTipoVisita('inspecao')">
+      🔍 Inspeção
+    </button>
+    <button id="btnTipoPreventiva"
+            class="pgp-tipo-btn"
+            onclick="pgpSetTipoVisita('preventiva')">
+      🔧 Preventiva
     </button>
   </div>
-  <div id="pgpTipoHint" style="font-size:11px;color:var(--text-light);margin-top:5px">
+  <div id="pgpTipoHint"
+       style="font-size:11px;color:var(--text-light);margin-top:5px">
     Inspeção: coleta dados e gera relatório.
   </div>
 </div>
 
-<div id="pgpOSPanel" style="display:none;padding:10px 12px"></div>
 <div class="content" id="machineContent"></div>
 
 <div class="actions">
@@ -654,9 +648,6 @@
 <div id="pgpPrevActionsWrap" class="pgp-prev-actions" style="display:none">
   <button class="btn-preventiva" onclick="pgpEnviarPreventiva()">
     🔧 Registrar Preventiva
-  </button>
-  <button class="btn-preventiva" style="background:var(--blue)" onclick="pgpAbrirFechamentoOS()">
-    🧾 Fechar OS
   </button>
 </div>
 
@@ -2991,9 +2982,8 @@ function addImagemProporcional(doc, imgData, x, y, maxW, maxH, srcW, srcH) {
   doc.addImage(imgData, 'JPEG', x, y, w, h);
 }
 
-async function gerarPDF(maquinaIdx = null) {
-  const pdfMachineIndexes = maquinaIdx === null ? machines.map((_, i) => i) : [maquinaIdx];
-  if (machines.length === 0 || !pdfMachineIndexes.length) { alert('Nenhuma máquina para gerar relatório.'); return; }
+async function gerarPDF() {
+  if (machines.length === 0) { alert('Nenhuma máquina para gerar relatório.'); return; }
 
   const { jsPDF } = window.jspdf;
   if (!jsPDF) { alert('Biblioteca PDF não carregada. Verifique a conexão e tente novamente.'); return; }
@@ -3140,16 +3130,15 @@ async function gerarPDF(maquinaIdx = null) {
   // ══════════════════════════════════════════════════════
   // LOOP POR MÁQUINA
   // ══════════════════════════════════════════════════════
-  for (let pdfi = 0; pdfi < pdfMachineIndexes.length; pdfi++) {
-    const midx = pdfMachineIndexes[pdfi];
-    if (pdfi > 0) { newPage(); }
+  for (let midx = 0; midx < machines.length; midx++) {
+    if (midx > 0) { newPage(); }
 
     // ── PÁGINA 1: HEADER ──────────────────────────────
-    addPageHeader(pdfi === 0);
-    let y = pdfi === 0 ? 40 : 24;
+    addPageHeader(midx === 0);
+    let y = midx === 0 ? 40 : 24;
 
     // Título da máquina (se múltiplas)
-    if (pdfMachineIndexes.length > 1) {
+    if (machines.length > 1) {
       doc.setFillColor(...ORANGE);
       doc.rect(ML, y, CW, 7, 'F');
       doc.setFont('helvetica','bold');
@@ -3439,7 +3428,6 @@ async function gerarPDF(maquinaIdx = null) {
   const nomeArq = `Relatorio_PGP_${razao}_${dataStr}.pdf`.replace(/\s+/g,'_');
   doc.save(nomeArq);
   showNotification('✅ PDF gerado: ' + nomeArq);
-  return { doc, nomeArq };
 }
 
 // ══════════════════════════════════════════════════════════
@@ -4854,14 +4842,12 @@ function pgpBuildPreventivaPayload(midx=currentMachine){
     hpw:base.hpw,
     tech:base.tech,
     tipo:'preventiva',
-    tipo_visita: _pgpOSAtual ? (_pgpOSAtual.tipo_os || 'Preventiva') : _pgpTipoVisita,
     scenario:base.scenario,
     generalObs:base.generalObs,
     cnpj:base.cnpj||'',phone:base.phone||'',email:base.email||'',city:base.city||'',
     // v8.4.4:
     contact:base.contact||'',nextVisit:base.nextVisit||'',lastVisit:base.lastVisit||'',
-    parts,
-    os_numero: _pgpOSAtual?.numero_os || ''
+    parts
   };
 }
 
@@ -4922,7 +4908,6 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       return;
     }
     list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-    if(_pgpOSAtual) _pgpOSUltimaVisita = payload.visit_id || _pgpOSUltimaVisita;
     const qResult = savePendingQueue(list);
     pgpUpdatePendingBadge();
     if(qResult.blocked){
@@ -4947,11 +4932,7 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       showNotification('ℹ Esta preventiva já foi registrada');
     } else if(d.status==='ok'){
       showNotification('✅ Preventiva registrada — '+nTrocadas+' peça(s) atualizada(s)');
-      if(_pgpOSAtual){
-        _pgpOSUltimaVisita = d.visit_id || payload.visit_id || _pgpOSUltimaVisita;
-        pgpUpdateOSBadge();
-      }
-      if(!_pgpOSAtual) pgpSetTipoVisita('inspecao');
+      pgpSetTipoVisita('inspecao');
     } else {
       throw new Error(d.error||'Erro desconhecido');
     }
@@ -4961,7 +4942,6 @@ async function pgpEnviarPreventiva(midx=currentMachine){
       showNotification('🚫 Falha no envio e fila cheia. Conecte-se para liberar espaço.');
     } else {
       list.push({action:'savePreventiva',body:payload,signature:payload.visit_id,ts:Date.now()});
-      if(_pgpOSAtual) _pgpOSUltimaVisita = payload.visit_id || _pgpOSUltimaVisita;
       const qResult = savePendingQueue(list);
       pgpUpdatePendingBadge();
       if(qResult.blocked){
@@ -4974,504 +4954,6 @@ async function pgpEnviarPreventiva(midx=currentMachine){
     if(btn){btn.disabled=false;btn.textContent='🔧 Registrar Preventiva';}
   }
 }
-
-
-// ══════════════════════════════════════════════════════════
-// ORDENS DE SERVIÇO v14 — porta opcional, não bloqueia inspeção/comercial
-// ══════════════════════════════════════════════════════════
-const PGP_ATT_QUEUE_KEY = 'proper_pending_att';
-const PGP_OS_DRAFT_KEY = 'proper_os_draft';
-let _pgpOSTecnico = null;
-let _pgpOSLista = [];
-let _pgpOSAtual = null;
-let _pgpOSInicio = '';
-let _pgpOSUltimaVisita = '';
-let _pgpOSMaquinas = [];
-let _pgpOSMaquinaAtualIdx = 0;
-let _pgpOSFormData = {};
-let _pgpOSDraftDirty = false;
-
-// ── v15: helper de PDF genérico para OS não-preventivas ─────────────────────
-async function pgpGerarPDFGenericoOS(titulo, secoes){
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) { showNotification('⚠ Biblioteca PDF não carregada.'); return null; }
-  showNotification('⏳ Gerando PDF...');
-  await new Promise(r=>setTimeout(r,80));
-
-  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  const PW=210, PH=297, ML=14, MR=14, CW=PW-ML-MR;
-  const BLUE=[26,58,107], ORANGE=[232,160,32], DARK=[43,43,43], LGRAY=[244,245,247], WHITE=[255,255,255];
-  const agora=new Date();
-  const dataHoje=agora.toLocaleDateString('pt-BR')+' '+agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  let y=42;
-
-  doc.setFillColor(...BLUE); doc.rect(0,0,PW,36,'F');
-  try{ doc.addImage('data:image/png;base64,'+LOGO_B64,'PNG',ML,5,52,13); }
-  catch(e){ doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(...WHITE); doc.text('PROPER COMPRESSORES',ML,14); }
-  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...WHITE);
-  doc.text(limparTextoPDF(titulo), PW-MR, 9, {align:'right'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(200,210,230);
-  doc.text(limparTextoPDF('Ordens de Servico - Proper Compressores'), PW-MR, 14, {align:'right'});
-  doc.setFillColor(...ORANGE); doc.rect(0,33,PW,3,'F');
-
-  function addFooter(){
-    const fy=PH-8;
-    doc.setFillColor(...LGRAY); doc.rect(0,PH-11,PW,11,'F');
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(120,130,150);
-    doc.text(limparTextoPDF('Gerado em '+dataHoje+' - Proper Compressores - Divinopolis/MG'), ML, fy);
-  }
-  function checkPageBreak(needed){
-    if(y+needed>PH-14){ addFooter(); doc.addPage(); y=20;
-      doc.setFillColor(...BLUE); doc.rect(0,0,PW,16,'F');
-      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...WHITE);
-      doc.text(limparTextoPDF('PROPER COMPRESSORES - '+titulo), ML, 11);
-      doc.setFillColor(...ORANGE); doc.rect(0,16,PW,2,'F');
-    }
-  }
-
-  secoes.forEach(function(sec){
-    checkPageBreak(14);
-    doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...DARK);
-    doc.text(limparTextoPDF(sec.titulo), ML, y); y+=5;
-    doc.setDrawColor(...ORANGE); doc.setLineWidth(0.5); doc.line(ML,y-3,ML+30,y-3);
-    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(...DARK);
-    const linhas=doc.splitTextToSize(limparTextoPDF(String(sec.conteudo||'-')), CW);
-    linhas.forEach(function(linha){
-      checkPageBreak(5);
-      doc.text(linha, ML, y); y+=4.5;
-    });
-    y+=3;
-  });
-
-  addFooter();
-  return { doc, nomeArq: titulo.replace(/[^a-zA-Z0-9]+/g,'_')+'_'+Date.now()+'.pdf' };
-}
-function pgpUpdateOSBadge(){
-  const badge = document.getElementById('pgpOSBadge');
-  if(!badge) return;
-  if(_pgpOSAtual){
-    badge.textContent = `${pgpOSTipoIcone(_pgpOSAtual.tipo_os)} ${_pgpOSAtual.tipo_os || 'Preventiva'} · ${_pgpOSAtual.numero_os} (tipo travado)`;
-    badge.style.display = 'inline-block';
-  } else {
-    badge.textContent = '🔧 Modo OS — tipo definido pelo PCM';
-    badge.style.display = 'none';
-  }
-}
-function pgpOSTipoIcone(tipo){
-  const map={'Preventiva':'🔧','Corretiva':'🛠️','Visita Técnica':'📋','Diagnóstico':'🩺'};
-  return map[String(tipo||'Preventiva')] || '🔧';
-}
-function pgpSetOSModeUI(ativo) {
-  const btns = ['btnTipoInspecao','btnTipoPreventiva'];
-  btns.forEach(function(id){
-    const el = document.getElementById(id);
-    if(!el) return;
-    el.disabled = ativo;
-    el.style.opacity = ativo ? '0.4' : '';
-    el.style.pointerEvents = ativo ? 'none' : '';
-    el.title = ativo ? 'Tipo definido pela OS' : '';
-  });
-  const badge = document.getElementById('pgpOSBadge');
-  if(badge) badge.style.display = ativo ? 'inline-block' : 'none';
-  if(ativo) pgpUpdateOSBadge();
-}
-function pgpGetAttQueue(){try{return JSON.parse(localStorage.getItem(PGP_ATT_QUEUE_KEY)||'[]')||[];}catch(e){return[];}}
-function pgpSaveAttQueue(list){localStorage.setItem(PGP_ATT_QUEUE_KEY, JSON.stringify(list||[]));}
-function pgpQueueAnexo(payload){const list=pgpGetAttQueue();list.push({payload,ts:Date.now()});pgpSaveAttQueue(list);pgpFlushAnexos();}
-async function pgpUploadAnexo(payload){return pgpPostJson('salvarFotosDrivePGP', payload);}
-async function pgpFlushAnexos(){
-  if(!_pgpGsConnected||!_pgpGsUrl) return;
-  const list=pgpGetAttQueue(); if(!list.length) return;
-  const failed=[];
-  for(const item of list){
-    try{
-      const resp=await pgpUploadAnexo(item.payload);
-      if(item.payload?.attachmentType==='pdf_os' && _pgpOSAtual?.id_os){
-        await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,pdf_url:resp.url,drive_folder_id:resp.folder_id,drive_folder_url:resp.folder_url});
-      }
-    }catch(e){failed.push(item);}
-  }
-  pgpSaveAttQueue(failed);
-}
-function pgpBase64FromDataUrl(dataUrl){return String(dataUrl||'').split(',')[1]||'';}
-async function pgpHashPin(pin){
-  const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
-  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function pgpOpenOSLogin(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  p.style.display='block';
-  if(_pgpOSTecnico){ pgpRenderOSLista(); return; }
-  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue);margin-bottom:8px">🧾 Minhas Ordens de Serviço</div><div style="font-size:12px;color:var(--text-light);margin-bottom:8px">Identifique-se com seu PIN para ver suas OS.</div><input id="pgpPinOS" type="password" inputmode="numeric" maxlength="6" placeholder="PIN do técnico" style="width:100%;font-size:22px;padding:10px;border:1px solid var(--gray-mid);border-radius:8px;letter-spacing:5px" onkeydown="if(event.key==='Enter')pgpLoginTecnicoOS()"><button class="btn" style="margin-top:8px;background:var(--blue);color:white;width:100%" onclick="pgpLoginTecnicoOS()">Entrar</button><div id="pgpOSMsg" style="font-size:12px;margin-top:8px;color:var(--text-light)"></div></div>`;
-  setTimeout(()=>document.getElementById('pgpPinOS')?.focus(),200);
-}
-async function pgpLoginTecnicoOS(){
-  const pin=document.getElementById('pgpPinOS')?.value||''; if(pin.length<4){showNotification('⚠ Informe o PIN');return;}
-  try{
-    const pin_hash=await pgpHashPin(pin);
-    const d=await pgpPostJson('loginTecnico',{pin_hash});
-    if(!d.valido){ document.getElementById('pgpOSMsg').textContent=d.error||'PIN inválido'; return; }
-    _pgpOSTecnico=d.tecnico; _pgpOSLista=d.os||[];
-    sessionStorage.setItem('proper_os_session',JSON.stringify({tecnico:_pgpOSTecnico,os:_pgpOSLista}));
-    pgpRenderOSLista();
-  }catch(e){
-    const msg=document.getElementById('pgpOSMsg'); if(msg) msg.textContent=e.message||'PIN inválido';
-  }
-}
-async function pgpAtualizarOSLista(){
-  if(!_pgpOSTecnico?.id) return;
-  try{
-    const r=await fetch(_pgpGsUrl+'?action=getOS&id_tecnico='+encodeURIComponent(_pgpOSTecnico.id)+'&key='+_AUTH_HASH);
-    const txt=await r.text();
-    if(!txt.trim().startsWith('<')){ const d=JSON.parse(txt); if(d.status==='ok'){ _pgpOSLista=d.os||[]; sessionStorage.setItem('proper_os_session',JSON.stringify({tecnico:_pgpOSTecnico,os:_pgpOSLista})); } }
-  }catch(e){ showNotification('⚠ Falha ao atualizar lista: '+e.message); }
-  pgpRenderOSLista();
-}
-function pgpOSPrioridadeTag(p){
-  return String(p||'normal')==='urgente' ? '<span style="background:#fef3c7;color:#b45309;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;margin-left:4px">⚠ Urgente</span>' : '';
-}
-function pgpRenderOSLista(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  p.innerHTML=`<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-weight:700;color:var(--blue)">OS de ${(_pgpOSTecnico?.nome)||'técnico'}</div>
-      <button class="btn" style="background:var(--gray-mid);color:var(--text);padding:4px 10px;font-size:12px" onclick="pgpAtualizarOSLista()">↻ Atualizar</button>
-    </div>
-    ${_pgpOSLista.map((o,i)=>`<button class="btn" style="display:block;width:100%;margin:6px 0;text-align:left" onclick="pgpAbrirOS(${i})">${pgpOSTipoIcone(o.tipo_os)} <b>${o.numero_os}</b> · ${o.cliente||''} ${pgpOSPrioridadeTag(o.prioridade)}<br><small>${o.tipo_os||'Preventiva'} · ${o.descricao||''}</small></button>`).join('')||'<div style="font-size:12px;color:var(--text-light)">Nenhuma OS pendente.</div>'}
-    <button class="btn" style="margin-top:8px;background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpFecharOSPanel()">Fechar</button>
-  </div>`;
-}
-function pgpFecharOSPanel(){
-  const p=document.getElementById('pgpOSPanel'); if(p){p.style.display='none';p.innerHTML='';}
-}
-async function pgpBuscarMaquinasDaOS(idOs){
-  try{
-    const r=await fetch(_pgpGsUrl+'?action=getMaquinasByOS&id_os='+encodeURIComponent(idOs)+'&key='+_AUTH_HASH);
-    const txt=await r.text();
-    if(txt.trim().startsWith('<')) throw new Error('HTML retornado');
-    const d=JSON.parse(txt);
-    if(d.status==='ok') return d.machines||[];
-    throw new Error(d.error||'Falha ao buscar maquinas da OS');
-  }catch(e){
-    showNotification('Aviso: Nao foi possivel buscar maquinas no servidor - usando dados locais como referencia.');
-    const ids=new Set((function(){try{const a=JSON.parse(_pgpOSAtual.maquinas_vinculadas||'[]');return Array.isArray(a)?a.map(String):[];}catch(_e){return[];}})());
-    const all=pgpGetLocalMachines();
-    const normOSClient=v=>String(v||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-    const osClientNorm=normOSClient(_pgpOSAtual.cliente||'');
-    return all.filter(m=>normOSClient(m.client||'')===osClientNorm || ids.has(String(m.id||'')));
-  }
-}
-async function pgpAbrirOS(i){
-  _pgpOSAtual=_pgpOSLista[i];
-  _pgpOSInicio=new Date().toISOString();
-  _pgpOSUltimaVisita='';
-  _pgpOSMaquinaAtualIdx=0;
-  _pgpOSFormData={};
-
-  try{
-    await pgpPostJson('saveOS',{id_os:_pgpOSAtual.id_os,status:'em_andamento',inicio_atendimento:_pgpOSInicio,tecnico_atual:_pgpOSTecnico?.id||'',_origem:'PCF'});
-  }catch(e){
-    showNotification('Falha ao abrir OS no servidor: '+e.message);
-    return;
-  }
-
-  pgpSetOSModeUI(true);
-  pgpUpdateOSBadge();
-
-  _pgpOSMaquinas = await pgpBuscarMaquinasDaOS(_pgpOSAtual.id_os);
-
-  const draftRestaurado = await pgpRestaurarDraftOS();
-  if(!draftRestaurado) _pgpOSDraftDirty=false;
-
-  pgpRoteadorFluxoOS();
-}
-function pgpCancelarOS(){
-  _pgpOSAtual=null; _pgpOSInicio=''; _pgpOSUltimaVisita=''; _pgpOSMaquinas=[]; _pgpOSMaquinaAtualIdx=0; _pgpOSFormData={};
-  pgpSetOSModeUI(false);
-  const p=document.getElementById('pgpOSPanel'); if(p){p.style.display='none';p.innerHTML='';}
-}
-
-// -- v15: Roteador de fluxo por tipo de OS --
-function pgpRoteadorFluxoOS(){
-  const tipo=String(_pgpOSAtual?.tipo_os||'Preventiva').toLowerCase();
-  if(tipo==='preventiva') return pgpFluxoPreventivaOS();
-  if(tipo==='corretiva') return pgpFluxoCorretivaOS();
-  if(tipo==='visita tecnica'||tipo==='visita técnica') return pgpFluxoVisitaTecnicaOS();
-  if(tipo==='diagnostico'||tipo==='diagnóstico') return pgpFluxoDiagnosticoOS();
-  return pgpFluxoGenericoOS();
-}
-
-// -- v15: Preventiva -- fluxo existente, agora por maquina vinculada da OS --
-function pgpFluxoPreventivaOS(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  if(!_pgpOSMaquinas.length){
-    p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' · Preventiva</div><div style="font-size:12px;color:var(--orange);margin:8px 0">Esta OS nao possui maquinas vinculadas no servidor. Voce pode continuar ou retornar ao Manager para vincular maquinas.</div><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS sem maquina</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Voltar</button></div>';
-    pgpSetTipoVisita('preventiva');
-    return;
-  }
-  const m=_pgpOSMaquinas[_pgpOSMaquinaAtualIdx];
-  const navBtns=((_pgpOSMaquinaAtualIdx>0?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSMaquinaAnterior()">Anterior</button>':'')+(_pgpOSMaquinaAtualIdx<_pgpOSMaquinas.length-1?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSMaquinaProxima()">Proxima</button>':''));
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' · Preventiva</div><div style="font-size:12px;color:var(--text-light);margin:6px 0">Maquina '+(_pgpOSMaquinaAtualIdx+1)+' de '+_pgpOSMaquinas.length+': <b>'+(m.tag||m.serial||m.model||m.id)+'</b> · '+(m.client||'')+(m.status_atendimento==='atendida'?' OK':'')+' </div><div style="font-size:11px;color:var(--text-light);margin-bottom:8px">Preencha a preventiva abaixo normalmente. Ao registrar, avance para a proxima maquina.</div><div style="display:flex;gap:6px;margin-bottom:8px">'+navBtns+'</div><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Sair sem concluir</button></div>';
-  pgpSelecionarMaquinaLocalParaOS(m);
-  pgpSetTipoVisita('preventiva');
-}
-function pgpOSMaquinaProxima(){ if(_pgpOSMaquinaAtualIdx<_pgpOSMaquinas.length-1){ _pgpOSMaquinaAtualIdx++; pgpFluxoPreventivaOS(); } }
-function pgpOSMaquinaAnterior(){ if(_pgpOSMaquinaAtualIdx>0){ _pgpOSMaquinaAtualIdx--; pgpFluxoPreventivaOS(); } }
-function pgpSelecionarMaquinaLocalParaOS(m){
-  try{
-    if(typeof machines!=='undefined' && Array.isArray(machines)){
-      const idx=machines.findIndex(x=>String(x.id||'')===String(m.id||''));
-      if(idx>=0){
-        if(typeof selecionarMaquina==='function') selecionarMaquina(idx);
-        else if(typeof switchMachine==='function') switchMachine(idx);
-        else currentMachine=idx;
-      }
-    }
-  }catch(e){}
-}
-// -- v15: Fluxo Corretiva --
-function pgpFluxoCorretivaOS(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  pgpSetOSModeUI(true);
-  const m=_pgpOSMaquinas[_pgpOSMaquinaAtualIdx]||null;
-  const fd=_pgpOSFormData;
-  const navBtns=_pgpOSMaquinas.length>1?((_pgpOSMaquinaAtualIdx>0?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSTrocarMaquinaForm(-1)">Anterior</button>':'')+(_pgpOSMaquinaAtualIdx<_pgpOSMaquinas.length-1?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSTrocarMaquinaForm(1)">Proxima</button>':'')):'' ;
-  const mInfo=m?('<div style="font-size:12px;color:var(--text-light);margin-bottom:6px">'+((_pgpOSMaquinas.length>1)?('Maquina '+(_pgpOSMaquinaAtualIdx+1)+' de '+_pgpOSMaquinas.length+': '):('Maquina: '))+(m.tag||m.serial||m.model||m.id)+'</div>'+(navBtns?'<div style="display:flex;gap:6px;margin-bottom:8px">'+navBtns+'</div>':'')):'';
-  const semMaq=!_pgpOSMaquinas.length?'<div style="font-size:12px;color:var(--orange);margin:6px 0">Sem maquinas vinculadas - atendimento administrativo.</div>':'';
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' Corretiva</div>'+semMaq+mInfo+'<label style="font-size:12px;font-weight:700">Problema relatado</label><textarea id="pgpCorrProblema" rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'problema\',this.value)">'+pgpEscapeHtml(fd.problema||'')+'</textarea><label style="font-size:12px;font-weight:700">Causa provavel</label><textarea id="pgpCorrCausa" rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'causa\',this.value)">'+pgpEscapeHtml(fd.causa||'')+'</textarea><label style="font-size:12px;font-weight:700">Acao executada</label><textarea id="pgpCorrAcao" rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'acao\',this.value)">'+pgpEscapeHtml(fd.acao||'')+'</textarea><label style="font-size:12px;font-weight:700">Pecas utilizadas/recomendadas</label><textarea id="pgpCorrPecas" rows="2" placeholder="Ex.: Filtro de oleo XYZ (trocado)" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'pecas\',this.value)">'+pgpEscapeHtml(fd.pecas||'')+'</textarea><label style="font-size:12px;font-weight:700">Horimetro atual</label><input id="pgpCorrHorimetro" type="number" inputmode="numeric" value="'+pgpEscapeHtml(fd.horimetro||'')+'" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'horimetro\',this.value)"><label style="font-size:12px;font-weight:700">Status final do compressor</label><select id="pgpCorrStatus" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" onchange="pgpOSFormChange(\'statusFinal\',this.value)"><option value="operacional" '+(fd.statusFinal==='operacional'?'selected':'')+'>Operacional</option><option value="parcial" '+(fd.statusFinal==='parcial'?'selected':'')+'>Operacional parcial</option><option value="parado" '+(fd.statusFinal==='parado'?'selected':'')+'>Parado</option></select><label style="font-size:12px;font-weight:700"><input type="checkbox" id="pgpCorrTrocouPreventiva" onchange="pgpOSFormChange(\'trocouPecaPreventiva\',this.checked)" '+(fd.trocouPecaPreventiva?'checked':'')+'>  Troquei uma peca do plano preventivo desta maquina</label><div style="font-size:11px;color:var(--text-light);margin:4px 0 8px">Marque apenas se a troca deve atualizar o controle de preventivas desta maquina.</div><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Sair sem concluir</button></div>';
-}
-function pgpOSTrocarMaquinaForm(delta){
-  _pgpOSMaquinaAtualIdx=Math.max(0,Math.min(_pgpOSMaquinas.length-1,_pgpOSMaquinaAtualIdx+delta));
-  pgpRoteadorFluxoOS();
-}
-function pgpOSFormChange(campo,valor){
-  _pgpOSFormData[campo]=valor;
-  pgpSalvarDraftLocalOS();
-}
-function pgpEscapeHtml(v){return String(v??'').replace(/[&<>"']/g,function(m){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);});}
-
-// -- v15: Fluxo Visita Tecnica --
-function pgpFluxoVisitaTecnicaOS(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  pgpSetOSModeUI(true);
-  const fd=_pgpOSFormData;
-  const mList=_pgpOSMaquinas.length?('<div style="font-size:12px;color:var(--text-light);margin-bottom:6px">Maquina(s): '+_pgpOSMaquinas.map(function(m){return m.tag||m.serial||m.model||m.id;}).join(', ')+'</div>'):'';
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' Visita Tecnica</div>'+mList+'<label style="font-size:12px;font-weight:700">Objetivo da visita</label><textarea rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'objetivo\',this.value)">'+pgpEscapeHtml(fd.objetivo||'')+'</textarea><label style="font-size:12px;font-weight:700">Verificacoes realizadas</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'verificacoes\',this.value)">'+pgpEscapeHtml(fd.verificacoes||'')+'</textarea><label style="font-size:12px;font-weight:700">Medicoes/constatacoes</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'medicoes\',this.value)">'+pgpEscapeHtml(fd.medicoes||'')+'</textarea><label style="font-size:12px;font-weight:700">Recomendacoes</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'recomendacoes\',this.value)">'+pgpEscapeHtml(fd.recomendacoes||'')+'</textarea><label style="font-size:12px;font-weight:700">Proxima acao sugerida</label><textarea rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'proximaAcao\',this.value)">'+pgpEscapeHtml(fd.proximaAcao||'')+'</textarea><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Sair sem concluir</button></div>';
-}
-
-// -- v15: Fluxo Diagnostico --
-function pgpFluxoDiagnosticoOS(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  pgpSetOSModeUI(true);
-  const fd=_pgpOSFormData;
-  const m=_pgpOSMaquinas[_pgpOSMaquinaAtualIdx]||null;
-  const navBtns=_pgpOSMaquinas.length>1?((_pgpOSMaquinaAtualIdx>0?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSTrocarMaquinaForm(-1)">Anterior</button>':'')+(_pgpOSMaquinaAtualIdx<_pgpOSMaquinas.length-1?'<button class="btn" style="background:var(--gray-mid);color:var(--text);flex:1" onclick="pgpOSTrocarMaquinaForm(1)">Proxima</button>':'')):'' ;
-  const mInfo=m?('<div style="font-size:12px;color:var(--text-light);margin-bottom:6px">'+((_pgpOSMaquinas.length>1)?('Maquina '+(_pgpOSMaquinaAtualIdx+1)+' de '+_pgpOSMaquinas.length+': '):('Maquina: '))+(m.tag||m.serial||m.model||m.id)+'</div>'+(navBtns?'<div style="display:flex;gap:6px;margin-bottom:8px">'+navBtns+'</div>':'')):'';
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' Diagnostico</div>'+mInfo+'<label style="font-size:12px;font-weight:700">Sintomas relatados</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'sintomas\',this.value)">'+pgpEscapeHtml(fd.sintomas||'')+'</textarea><label style="font-size:12px;font-weight:700">Condicoes de operacao no momento</label><textarea rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'condicoes\',this.value)">'+pgpEscapeHtml(fd.condicoes||'')+'</textarea><label style="font-size:12px;font-weight:700">Medicoes realizadas</label><textarea rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'medicoes\',this.value)">'+pgpEscapeHtml(fd.medicoes||'')+'</textarea><label style="font-size:12px;font-weight:700">Hipotese/diagnostico</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'hipotese\',this.value)">'+pgpEscapeHtml(fd.hipotese||'')+'</textarea><label style="font-size:12px;font-weight:700">Recomendacao tecnica</label><textarea rows="3" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'recomendacao\',this.value)">'+pgpEscapeHtml(fd.recomendacao||'')+'</textarea><label style="font-size:12px;font-weight:700">Urgencia</label><select style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" onchange="pgpOSFormChange(\'urgencia\',this.value)"><option value="baixa" '+(fd.urgencia==='baixa'?'selected':'')+'>Baixa</option><option value="media" '+((!fd.urgencia||fd.urgencia==='media')?'selected':'')+'>Media</option><option value="alta" '+(fd.urgencia==='alta'?'selected':'')+'>Alta</option><option value="critica" '+(fd.urgencia==='critica'?'selected':'')+'>Critica</option></select><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Sair sem concluir</button></div>';
-}
-
-// -- v15: Fluxo Generico (fallback) --
-function pgpFluxoGenericoOS(){
-  const p=document.getElementById('pgpOSPanel'); if(!p) return;
-  pgpSetOSModeUI(true);
-  const fd=_pgpOSFormData;
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">OS '+_pgpOSAtual.numero_os+' '+pgpEscapeHtml(_pgpOSAtual.tipo_os||'Atendimento')+'</div><div style="font-size:12px;color:var(--text-light);margin-bottom:6px">'+pgpEscapeHtml(_pgpOSAtual.descricao||'')+'</div><label style="font-size:12px;font-weight:700">Descricao do atendimento</label><textarea rows="4" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'descricaoAtendimento\',this.value)">'+pgpEscapeHtml(fd.descricaoAtendimento||'')+'</textarea><button class="btn" style="background:var(--blue);color:white;width:100%;margin-bottom:6px" onclick="pgpAbrirFechamentoOS()">Concluir OS</button><button class="btn" style="background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpCancelarOS()">Sair sem concluir</button></div>';
-}
-
-// -- v15: Drafts de atendimento de OS --
-function pgpSalvarDraftLocalOS(){
-  if(!_pgpOSAtual) return;
-  _pgpOSDraftDirty=true;
-  const draft={
-    id_os:_pgpOSAtual.id_os, numero_os:_pgpOSAtual.numero_os, tipo_os:_pgpOSAtual.tipo_os,
-    id_tecnico:_pgpOSTecnico?.id||'', nome_tecnico:_pgpOSTecnico?.nome||'',
-    formData:_pgpOSFormData, maquinaAtualIdx:_pgpOSMaquinaAtualIdx,
-    ts:Date.now()
-  };
-  try{ localStorage.setItem(PGP_OS_DRAFT_KEY, JSON.stringify(draft)); }catch(e){}
-  pgpSalvarDraftOnlineOS();
-}
-let _pgpDraftSalvandoOnline=false;
-async function pgpSalvarDraftOnlineOS(){
-  if(_pgpDraftSalvandoOnline || !_pgpOSAtual || !_pgpOSTecnico?.id) return;
-  _pgpDraftSalvandoOnline=true;
-  try{
-    await pgpPostJson('salvarDraftOS',{
-      id_os:_pgpOSAtual.id_os, numero_os:_pgpOSAtual.numero_os,
-      id_tecnico:_pgpOSTecnico.id, nome_tecnico:_pgpOSTecnico.nome||'',
-      tipo_os:_pgpOSAtual.tipo_os||'',
-      payload_json:JSON.stringify({formData:_pgpOSFormData,maquinaAtualIdx:_pgpOSMaquinaAtualIdx})
-    });
-  }catch(e){}
-  finally{ _pgpDraftSalvandoOnline=false; }
-}
-async function pgpRestaurarDraftOS(){
-  if(!_pgpOSAtual) return false;
-  let draftLocal=null;
-  try{ draftLocal=JSON.parse(localStorage.getItem(PGP_OS_DRAFT_KEY)||'null'); }catch(e){}
-  let draftOnline=null;
-  if(_pgpOSTecnico?.id){
-    try{
-      const d=await pgpPostJson('getDraftOS',{id_os:_pgpOSAtual.id_os, id_tecnico:_pgpOSTecnico.id});
-      draftOnline=d.draft||null;
-    }catch(e){}
-  }
-  const candidatos=[];
-  if(draftLocal && draftLocal.id_os===_pgpOSAtual.id_os) candidatos.push({origem:'local',ts:draftLocal.ts||0,dados:draftLocal});
-  if(draftOnline && draftOnline.payload_json){
-    try{
-      const parsed=JSON.parse(draftOnline.payload_json);
-      const ts=new Date(draftOnline.timestamp_atualizacao||0).getTime()||0;
-      candidatos.push({origem:'online',ts,dados:{formData:parsed.formData||{},maquinaAtualIdx:parsed.maquinaAtualIdx||0}});
-    }catch(e){}
-  }
-  if(!candidatos.length) return false;
-  candidatos.sort(function(a,b){return b.ts-a.ts;});
-  const melhor=candidatos[0].dados;
-  if(!Object.keys(melhor.formData||{}).length) return false;
-  if(!confirm('Encontramos um atendimento em andamento para esta OS. Restaurar?')) return false;
-  _pgpOSFormData=melhor.formData||{};
-  _pgpOSMaquinaAtualIdx=Math.min(melhor.maquinaAtualIdx||0, Math.max(0,_pgpOSMaquinas.length-1));
-  return true;
-}
-async function pgpLimparDraftOS(motivo){
-  try{ localStorage.removeItem(PGP_OS_DRAFT_KEY); }catch(e){}
-  if(!_pgpOSAtual || !_pgpOSTecnico?.id) return;
-  try{ await pgpPostJson('limparDraftOS',{id_os:_pgpOSAtual.id_os, id_tecnico:_pgpOSTecnico.id, motivo:motivo||'concluido'}); }catch(e){}
-}
-
-function pgpCanvasPad(id){
-  return `<canvas id="${id}" width="320" height="120" style="width:100%;height:120px;border:1px solid var(--gray-mid);border-radius:8px;background:white;touch-action:none"></canvas>`;
-}
-function pgpBindCanvas(id){
-  const c=document.getElementById(id); if(!c) return; const ctx=c.getContext('2d'); let down=false;
-  const pos=e=>{const r=c.getBoundingClientRect();const t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*c.width/r.width,y:(t.clientY-r.top)*c.height/r.height};};
-  const start=e=>{down=true;const p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();};
-  const move=e=>{if(!down)return;const p=pos(e);ctx.lineWidth=2;ctx.lineCap='round';ctx.lineTo(p.x,p.y);ctx.stroke();e.preventDefault();};
-  ['mousedown','touchstart'].forEach(ev=>c.addEventListener(ev,start));['mousemove','touchmove'].forEach(ev=>c.addEventListener(ev,move));['mouseup','mouseleave','touchend'].forEach(ev=>c.addEventListener(ev,()=>down=false));
-}
-function pgpValidarFechamentoOS(){
-  const tipo=String(_pgpOSAtual?.tipo_os||'Preventiva');
-  const fd=_pgpOSFormData;
-  if(tipo==='Preventiva'){
-    if(!_pgpOSUltimaVisita && !(fd.observacaoFechamento||'').trim()){
-      return 'Nenhuma preventiva registrada. Informe uma observacao de fechamento explicando o motivo, ou registre ao menos uma preventiva.';
-    }
-    return null;
-  }
-  const camposPorTipo={'Corretiva':['problema','acao'],'Visita Tecnica':['objetivo','verificacoes'],'Visita Técnica':['objetivo','verificacoes'],'Diagnostico':['sintomas','hipotese'],'Diagnóstico':['sintomas','hipotese']};
-  const obrigatorios=camposPorTipo[tipo];
-  if(obrigatorios){
-    const faltando=obrigatorios.filter(function(c){return !(fd[c]||'').trim();});
-    if(faltando.length) return 'Preencha os campos obrigatorios antes de concluir: '+faltando.join(', ')+'.';
-    return null;
-  }
-  if(!(fd.descricaoAtendimento||'').trim()) return 'Descreva o atendimento antes de concluir.';
-  return null;
-}
-function pgpMontarObservacaoFechamento(){
-  const tipo=String(_pgpOSAtual?.tipo_os||'Preventiva');
-  const fd=_pgpOSFormData;
-  if(tipo==='Corretiva'){
-    return [fd.problema?'Problema: '+fd.problema:'',fd.causa?'Causa provavel: '+fd.causa:'',fd.acao?'Acao executada: '+fd.acao:'',fd.pecas?'Pecas: '+fd.pecas:'',fd.horimetro?'Horimetro: '+fd.horimetro:'',fd.statusFinal?'Status final: '+fd.statusFinal:''].filter(Boolean).join('\n');
-  }
-  if(tipo==='Visita Técnica'||tipo==='Visita Tecnica'){
-    return [fd.objetivo?'Objetivo: '+fd.objetivo:'',fd.verificacoes?'Verificacoes: '+fd.verificacoes:'',fd.medicoes?'Medicoes/constatacoes: '+fd.medicoes:'',fd.recomendacoes?'Recomendacoes: '+fd.recomendacoes:'',fd.proximaAcao?'Proxima acao: '+fd.proximaAcao:''].filter(Boolean).join('\n');
-  }
-  if(tipo==='Diagnóstico'||tipo==='Diagnostico'){
-    return [fd.sintomas?'Sintomas: '+fd.sintomas:'',fd.condicoes?'Condicoes de operacao: '+fd.condicoes:'',fd.medicoes?'Medicoes: '+fd.medicoes:'',fd.hipotese?'Hipotese/diagnostico: '+fd.hipotese:'',fd.recomendacao?'Recomendacao: '+fd.recomendacao:'',fd.urgencia?'Urgencia: '+fd.urgencia:''].filter(Boolean).join('\n');
-  }
-  if(tipo==='Preventiva') return fd.observacaoFechamento||'';
-  return fd.descricaoAtendimento||'';
-}
-function pgpAbrirFechamentoOS(){
-  if(!_pgpOSAtual){showNotification('Abra uma OS primeiro');return;}
-  const erro=pgpValidarFechamentoOS();
-  const p=document.getElementById('pgpOSPanel');
-  const tipo=String(_pgpOSAtual.tipo_os||'Preventiva');
-  const precisaObsFechamento = tipo==='Preventiva' && !_pgpOSUltimaVisita;
-  const obsCampo=precisaObsFechamento?('<label style="font-size:12px;font-weight:700">Observacao de fechamento (obrigatoria)</label><textarea id="pgpObsFechamento" rows="2" style="width:100%;border:1px solid var(--gray-mid);border-radius:8px;padding:8px;margin-bottom:8px" oninput="pgpOSFormChange(\'observacaoFechamento\',this.value)">'+pgpEscapeHtml(_pgpOSFormData.observacaoFechamento||'')+'</textarea>'):'';
-  const erroHtml=erro?('<div style="font-size:12px;color:var(--orange);margin:6px 0">'+pgpEscapeHtml(erro)+'</div>'):'';
-  p.innerHTML='<div style="background:white;border:1px solid var(--gray-mid);border-radius:12px;padding:12px"><div style="font-weight:700;color:var(--blue)">Fechar OS '+_pgpOSAtual.numero_os+' '+tipo+'</div>'+erroHtml+obsCampo+'<input id="pgpRespCliente" placeholder="Responsavel do cliente" style="width:100%;padding:8px;margin:8px 0;border:1px solid var(--gray-mid);border-radius:8px" value="'+pgpEscapeHtml(_pgpOSFormData.responsavelCliente||'')+'" oninput="pgpOSFormChange(\'responsavelCliente\',this.value)"><div style="font-size:12px;font-weight:700">Assinatura do tecnico</div>'+pgpCanvasPad('pgpAssTec')+'<div style="font-size:12px;font-weight:700;margin-top:8px">Assinatura do cliente</div>'+pgpCanvasPad('pgpAssCli')+'<div id="pgpFechamentoMsg" style="font-size:12px;color:var(--danger);margin-top:8px"></div><button class="btn" style="margin-top:8px;background:var(--blue);color:white;width:100%" onclick="pgpConcluirOS()" '+(erro?'disabled':'')+'>Concluir OS e gerar PDF</button><button class="btn" style="margin-top:6px;background:var(--gray-mid);color:var(--text);width:100%" onclick="pgpRoteadorFluxoOS()">Voltar</button></div>';
-  pgpBindCanvas('pgpAssTec'); pgpBindCanvas('pgpAssCli');
-}
-function pgpTituloPdfPorTipo(tipo){
-  const map={'Preventiva':'RELATORIO DE VISITA PREVENTIVA','Corretiva':'RELATORIO DE MANUTENCAO CORRETIVA','Visita Técnica':'RELATORIO DE VISITA TECNICA','Visita Tecnica':'RELATORIO DE VISITA TECNICA','Diagnóstico':'RELATORIO DE DIAGNOSTICO','Diagnostico':'RELATORIO DE DIAGNOSTICO'};
-  return map[tipo] || 'RELATORIO DE ORDEM DE SERVICO';
-}
-function pgpSecoesPdfPorTipo(){
-  const tipo=String(_pgpOSAtual.tipo_os||'Preventiva');
-  const fd=_pgpOSFormData;
-  const cabecalho={titulo:'Dados da OS',conteudo:'OS: '+_pgpOSAtual.numero_os+'\nCliente: '+(_pgpOSAtual.cliente||'')+'\nTipo: '+tipo+'\nTecnico: '+(_pgpOSTecnico?.nome||'')+'\nMaquinas: '+(_pgpOSMaquinas.map(function(m){return m.tag||m.serial||m.model||m.id;}).join(', ')||'-')};
-  if(tipo==='Corretiva') return [cabecalho,{titulo:'Problema relatado',conteudo:fd.problema||'-'},{titulo:'Causa provavel',conteudo:fd.causa||'-'},{titulo:'Acao executada',conteudo:fd.acao||'-'},{titulo:'Pecas utilizadas/recomendadas',conteudo:fd.pecas||'-'},{titulo:'Horimetro / Status final',conteudo:'Horimetro: '+(fd.horimetro||'-')+'\nStatus final: '+(fd.statusFinal||'-')}];
-  if(tipo==='Visita Técnica'||tipo==='Visita Tecnica') return [cabecalho,{titulo:'Objetivo da visita',conteudo:fd.objetivo||'-'},{titulo:'Verificacoes realizadas',conteudo:fd.verificacoes||'-'},{titulo:'Medicoes/constatacoes',conteudo:fd.medicoes||'-'},{titulo:'Recomendacoes',conteudo:fd.recomendacoes||'-'},{titulo:'Proxima acao sugerida',conteudo:fd.proximaAcao||'-'}];
-  if(tipo==='Diagnóstico'||tipo==='Diagnostico') return [cabecalho,{titulo:'Sintomas relatados',conteudo:fd.sintomas||'-'},{titulo:'Condicoes de operacao',conteudo:fd.condicoes||'-'},{titulo:'Medicoes realizadas',conteudo:fd.medicoes||'-'},{titulo:'Hipotese/diagnostico',conteudo:fd.hipotese||'-'},{titulo:'Recomendacao tecnica',conteudo:fd.recomendacao||'-'},{titulo:'Urgencia',conteudo:fd.urgencia||'-'}];
-  if(tipo==='Preventiva') return [cabecalho,{titulo:'Observacao de fechamento',conteudo:fd.observacaoFechamento||'(ver relatorio de visita preventiva em anexo)'}];
-  return [cabecalho,{titulo:'Descricao do atendimento',conteudo:fd.descricaoAtendimento||'-'}];
-}
-async function pgpConcluirOS(){
-  const erro=pgpValidarFechamentoOS();
-  if(erro){
-    const msg=document.getElementById('pgpFechamentoMsg'); if(msg) msg.textContent=erro;
-    showNotification(erro);
-    return;
-  }
-
-  const fim=new Date().toISOString();
-  const tipo=String(_pgpOSAtual.tipo_os||'Preventiva');
-  const common={osNumero:_pgpOSAtual.numero_os,id_os:_pgpOSAtual.id_os,clientName:_pgpOSAtual.cliente,entityType:'os',entityId:_pgpOSAtual.id_os,createdBy:_pgpOSTecnico?.id||_pgpOSTecnico?.nome||''};
-  const tec=document.getElementById('pgpAssTec')?.toDataURL('image/png');
-  const cli=document.getElementById('pgpAssCli')?.toDataURL('image/png');
-  const responsavelCliente=document.getElementById('pgpRespCliente')?.value||_pgpOSFormData.responsavelCliente||'';
-
-  if(tec) pgpQueueAnexo({...common,fileName:_pgpOSAtual.numero_os+'_assinatura_tecnico.png',mime:'image/png',dataBase64:pgpBase64FromDataUrl(tec),attachmentType:'assinatura_tecnico',caption:'Assinatura do tecnico'});
-  if(cli) pgpQueueAnexo({...common,fileName:_pgpOSAtual.numero_os+'_assinatura_cliente.png',mime:'image/png',dataBase64:pgpBase64FromDataUrl(cli),attachmentType:'assinatura_cliente',caption:responsavelCliente||'Assinatura do cliente'});
-
-  let pdf=null;
-  if(tipo==='Preventiva'){
-    try{ pdf=await gerarPDF(null); }catch(e){ pdf=null; }
-  }
-  if(!pdf){
-    pdf=await pgpGerarPDFGenericoOS(pgpTituloPdfPorTipo(tipo), pgpSecoesPdfPorTipo());
-  }
-  const attachmentTypePdf='pdf_os_'+tipo.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]+/g,'_');
-  if(pdf?.doc){
-    pgpQueueAnexo({...common,fileName:pdf.nomeArq,mime:'application/pdf',dataBase64:pgpBase64FromDataUrl(pdf.doc.output('datauristring')),attachmentType:attachmentTypePdf,caption:'Relatorio PDF da OS'});
-  }
-
-  const observacaoFechamento=pgpMontarObservacaoFechamento();
-  const payload={
-    id_os:_pgpOSAtual.id_os, status:'concluida', fim_atendimento:fim,
-    observacao_fechamento:observacaoFechamento, responsavel_cliente:responsavelCliente,
-    _origem:'PCF'
-  };
-  if(_pgpOSUltimaVisita){
-    payload.id_visita_resultado=_pgpOSUltimaVisita;
-    payload.visit_ids_resultado_json=[_pgpOSUltimaVisita];
-  }
-
-  try{
-    const r=await pgpPostJson('saveOS',payload);
-    if(r.status!=='ok' || r.os?.status!=='concluida'){
-      throw new Error(r.error||'O servidor nao confirmou a conclusao da OS.');
-    }
-    showNotification('OS concluida; anexosirao para o Drive/TECH_ATTACHMENTS.');
-    await pgpLimparDraftOS('concluido');
-    const idOsConcluida=String(payload.id_os);
-    _pgpOSAtual=null; _pgpOSInicio=''; _pgpOSUltimaVisita=''; _pgpOSMaquinas=[]; _pgpOSMaquinaAtualIdx=0; _pgpOSFormData={};
-    pgpSetOSModeUI(false);
-    const p=document.getElementById('pgpOSPanel'); if(p){p.style.display='none';p.innerHTML='';}
-    if(_pgpOSTecnico?.id) _pgpOSLista=_pgpOSLista.filter(function(o){return String(o.id_os)!==idOsConcluida;});
-  }catch(e){
-    const msg=document.getElementById('pgpFechamentoMsg');
-    if(msg) msg.textContent='Falha ao concluir: '+e.message+' - o atendimento foi salvo como rascunho, tente novamente.';
-    showNotification('Falha ao concluir OS: '+e.message);
-    pgpSalvarDraftLocalOS();
-  }
-}
-try{const s=JSON.parse(sessionStorage.getItem('proper_os_session')||'null');if(s){_pgpOSTecnico=s.tecnico;_pgpOSLista=s.os||[];}}catch(e){}
-window.addEventListener('load',()=>pgpFlushAnexos());
-window.addEventListener('beforeunload',()=>{ if(_pgpOSDraftDirty) pgpSalvarDraftLocalOS(); });
 
 // ─────────────────────────────────────────────────────────────────────────────
 
